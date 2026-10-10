@@ -15,12 +15,16 @@ const templateSelect = document.querySelector("#templateSelect");
 const findingsList = document.querySelector("#findingsList");
 const testList = document.querySelector("#testList");
 const toast = document.querySelector("#toast");
+const guideModal = document.querySelector("#guideModal");
+const guideOpen = document.querySelector("#guideOpen");
+const guideClose = document.querySelector("#guideClose");
 
 let analysis = null;
 let receipt = null;
 let rialoPayload = null;
 let activeSeverity = "all";
 let toastTimer = null;
+let guideReturnFocus = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -347,6 +351,47 @@ function jumpToLab() {
   window.setTimeout(() => runAnalysis(), 420);
 }
 
+function openGuide() {
+  guideReturnFocus = document.activeElement;
+  guideModal.hidden = false;
+  document.body.classList.add("guide-open");
+  guideOpen.setAttribute("aria-expanded", "true");
+  guideClose.focus();
+}
+
+function closeGuide(options) {
+  const restoreFocus = options?.restoreFocus !== false;
+  guideModal.hidden = true;
+  document.body.classList.remove("guide-open");
+  guideOpen.setAttribute("aria-expanded", "false");
+  if (restoreFocus && guideReturnFocus instanceof HTMLElement) {
+    guideReturnFocus.focus();
+  }
+}
+
+function keepGuideFocus(event) {
+  if (event.key === "Escape") {
+    closeGuide();
+    return;
+  }
+  if (event.key !== "Tab") return;
+
+  const focusable = Array.from(
+    guideModal.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"),
+  ).filter((item) => !item.disabled && !item.hidden);
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 editor.addEventListener("input", () => {
   updateLineNumbers();
   setEditorState("edited");
@@ -388,6 +433,21 @@ document
   .addEventListener("click", applyHardening);
 document.querySelector("#heroRun").addEventListener("click", jumpToLab);
 document.querySelector("#closingRun").addEventListener("click", jumpToLab);
+
+guideOpen.addEventListener("click", openGuide);
+guideClose.addEventListener("click", () => closeGuide());
+document.querySelector("#guideDone").addEventListener("click", () => closeGuide());
+guideModal.addEventListener("click", (event) => {
+  if (event.target === guideModal) closeGuide();
+});
+guideModal.addEventListener("keydown", keepGuideFocus);
+document.querySelector("#guideTry").addEventListener("click", () => {
+  closeGuide({ restoreFocus: false });
+  templateSelect.value = "unsafe";
+  loadTemplate("unsafe", false);
+  selectTab("findings");
+  jumpToLab();
+});
 
 templateSelect.addEventListener("change", () =>
   loadTemplate(templateSelect.value, true),

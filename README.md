@@ -6,7 +6,10 @@ LatchLens is a local-first red-team lab for Latch policies. It turns a policy
 pipeline into fourteen adversarial cases, explains the first denying filter,
 proposes safer defaults, and exports a SHA-256 receipt shaped for Rialo.
 
-Live prototype: https://latchlens.gladshrew64.chatgpt.site
+Live prototype: https://latchlens.vercel.app/
+
+New users can open **User guide** in the site header for a six-step walkthrough
+from choosing a sample policy to exporting the local proof receipt.
 
 ## Why this project
 

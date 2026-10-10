@@ -30,9 +30,23 @@
         <a href="#architecture">Architecture</a>
       </nav>
 
-      <div class="privacy-chip">
-        <span class="pulse-dot" aria-hidden="true"></span>
-        local-first
+      <div class="header-actions">
+        <button
+          class="guide-trigger"
+          id="guideOpen"
+          type="button"
+          aria-haspopup="dialog"
+          aria-controls="userGuide"
+          aria-expanded="false"
+        >
+          <span class="guide-trigger-icon" aria-hidden="true">?</span>
+          <span>User guide</span>
+        </button>
+
+        <div class="privacy-chip">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          local-first
+        </div>
       </div>
     </header>
 
@@ -494,6 +508,99 @@
         <a href="https://www.rialo.io/for-devs" target="_blank" rel="noreferrer">Rialo dev portal</a>
       </div>
     </footer>
+
+    <div class="guide-backdrop" id="guideModal" hidden>
+      <section
+        class="guide-dialog"
+        id="userGuide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guideTitle"
+        aria-describedby="guideIntro"
+      >
+        <div class="guide-heading">
+          <div>
+            <p class="section-kicker">Quick start · about 2 minutes</p>
+            <h2 id="guideTitle">How to use LatchLens</h2>
+          </div>
+          <button
+            class="guide-close"
+            id="guideClose"
+            type="button"
+            aria-label="Close user guide"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <p class="guide-intro" id="guideIntro">
+          Test a sample or your own Latch policy, inspect every exposed boundary,
+          then export deterministic evidence. No wallet or API key is required.
+        </p>
+
+        <ol class="guide-steps">
+          <li class="guide-step">
+            <span class="guide-step-number">01</span>
+            <div>
+              <h3>Choose a starting policy</h3>
+              <p>Select Unsafe starter, Support agent or Rialo signer from Load scenario.</p>
+            </div>
+          </li>
+          <li class="guide-step">
+            <span class="guide-step-number">02</span>
+            <div>
+              <h3>Add your policy</h3>
+              <p>Edit the JSON directly or use Import JSON. Never include secrets or tokens.</p>
+            </div>
+          </li>
+          <li class="guide-step">
+            <span class="guide-step-number">03</span>
+            <div>
+              <h3>Run the attack deck</h3>
+              <p>Click Run 14 attacks to test methods, identity, spend, PII, signing and more.</p>
+            </div>
+          </li>
+          <li class="guide-step">
+            <span class="guide-step-number">04</span>
+            <div>
+              <h3>Inspect the evidence</h3>
+              <p>Open Findings for fixes and Attack deck for each first-deny trace.</p>
+            </div>
+          </li>
+          <li class="guide-step">
+            <span class="guide-step-number">05</span>
+            <div>
+              <h3>Harden and retest</h3>
+              <p>Apply the safe patch, review its placeholders, then run the suite again.</p>
+            </div>
+          </li>
+          <li class="guide-step">
+            <span class="guide-step-number">06</span>
+            <div>
+              <h3>Export the proof</h3>
+              <p>Use Proof to download the report or copy the receipt and Rialo payload.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div class="guide-note">
+          <strong>MVP boundary</strong>
+          <span>
+            Results are generated locally. The displayed Rialo payload is prepared,
+            not submitted or anchored onchain.
+          </span>
+        </div>
+
+        <div class="guide-actions">
+          <button class="button button-primary" id="guideTry" type="button">
+            Try the sample now
+          </button>
+          <button class="button button-ghost" id="guideDone" type="button">
+            Got it
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./app.js"></script>
