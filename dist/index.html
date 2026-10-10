@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="LatchLens stress-tests AI-agent permissions before an agent can exploit them, then prepares a tamper-evident Rialo proof."
+    />
+    <meta name="theme-color" content="#07100e" />
+    <title>LatchLens — Red-team your agent policy</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#lab">Skip to policy lab</a>
+
+    <div class="page-noise" aria-hidden="true"></div>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="LatchLens home">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span>
+        </span>
+        <span>LatchLens</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#lab">Lab</a>
+        <a href="#why">Why it wins</a>
+        <a href="#architecture">Architecture</a>
+      </nav>
+
+      <div class="privacy-chip">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        local-first
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span>Latch × Rialo</span>
+            Permission assurance for autonomous agents
+          </p>
+          <h1>
+            Break your agent policy
+            <em>before an agent does.</em>
+          </h1>
+          <p class="hero-lede">
+            Paste a Latch pipeline. LatchLens generates adversarial requests,
+            exposes hidden permission gaps, shows the exact filter trace and
+            prepares a tamper-evident proof for Rialo.
+          </p>
+
+          <div class="hero-actions">
+            <button class="button button-primary" id="heroRun" type="button">
+              <span>Run the live demo</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 10h11M11 6l4 4-4 4" />
+              </svg>
+            </button>
+            <a class="button button-ghost" href="#architecture">
+              See the trust flow
+            </a>
+          </div>
+
+          <div class="trust-row" aria-label="Product principles">
+            <span>No API key required</span>
+            <span>Deterministic test engine</span>
+            <span>Exportable evidence</span>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="LatchLens policy trace illustration">
+          <div class="visual-header">
+            <span class="visual-label">live attack trace</span>
+            <span class="visual-id">case 07 / identity</span>
+          </div>
+          <div class="trace-scene">
+            <div class="request-orb">
+              <span class="orb-label">AGENT</span>
+              <strong>POST</strong>
+              <small>/v1/transfer</small>
+            </div>
+            <div class="filter-stack">
+              <div class="mini-filter passed">
+                <span>01</span>
+                <div>
+                  <small>method</small>
+                  <strong>POST allowed</strong>
+                </div>
+                <b>pass</b>
+              </div>
+              <div class="mini-filter passed">
+                <span>02</span>
+                <div>
+                  <small>endpoint</small>
+                  <strong>route matched</strong>
+                </div>
+                <b>pass</b>
+              </div>
+              <div class="mini-filter denied">
+                <span>03</span>
+                <div>
+                  <small>identity</small>
+                  <strong>missing signed slip</strong>
+                </div>
+                <b>deny</b>
+              </div>
+            </div>
+            <div class="proof-ticket">
+              <div>
+                <small>OUTCOME</small>
+                <strong>credential untouched</strong>
+              </div>
+              <span>403</span>
+            </div>
+          </div>
+          <div class="visual-footer">
+            <span><i class="dot-red"></i> attack contained</span>
+            <span>18 ms</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-shell" id="lab">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Interactive prototype</p>
+            <h2>Policy attack lab</h2>
+          </div>
+          <div class="mode-note">
+            <span>Local mirror</span>
+            Confirm final behavior with Latch Simulate
+          </div>
+        </div>
+
+        <div class="lab-toolbar">
+          <label class="template-control">
+            <span>Load scenario</span>
+            <select id="templateSelect" aria-label="Choose a policy template">
+              <option value="unsafe">Unsafe starter</option>
+              <option value="support">Support agent</option>
+              <option value="signer">Rialo signer</option>
+            </select>
+          </label>
+
+          <div class="toolbar-actions">
+            <input
+              type="file"
+              id="fileInput"
+              accept=".json,application/json"
+              hidden
+            />
+            <button class="button button-small button-ghost" id="importButton" type="button">
+              Import JSON
+            </button>
+            <button class="button button-small button-ghost" id="formatButton" type="button">
+              Format
+            </button>
+            <button class="button button-small button-accent" id="runButton" type="button">
+              Run 14 attacks
+            </button>
+          </div>
+        </div>
+
+        <div class="lab-grid">
+          <section class="panel editor-panel" aria-labelledby="editorTitle">
+            <div class="panel-topline">
+              <div>
+                <span class="panel-number">01</span>
+                <div>
+                  <p class="panel-label">Input</p>
+                  <h3 id="editorTitle">Latch policy JSON</h3>
+                </div>
+              </div>
+              <div class="editor-state" id="editorState">
+                <span></span>
+                <span id="editorStateText">ready</span>
+              </div>
+            </div>
+
+            <div class="code-wrap">
+              <div class="code-gutter" aria-hidden="true" id="lineNumbers"></div>
+              <textarea
+                id="policyEditor"
+                spellcheck="false"
+                aria-label="Latch policy JSON editor"
+              ></textarea>
+            </div>
+
+            <div class="editor-footer">
+              <p>
+                Secrets and tokens are not needed. Analysis stays in this tab.
+              </p>
+              <button class="text-button" id="hardenButton" type="button">
+                Apply safe hardening patch
+                <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel results-panel" aria-labelledby="resultTitle">
+            <div class="panel-topline">
+              <div>
+                <span class="panel-number">02</span>
+                <div>
+                  <p class="panel-label">Assurance report</p>
+                  <h3 id="resultTitle">Attack surface</h3>
+                </div>
+              </div>
+              <span class="report-mode">draft proof</span>
+            </div>
+
+            <div class="score-zone">
+              <div class="score-ring" id="scoreRing" style="--score: 0">
+                <div class="score-core">
+                  <span id="scoreValue">0</span>
+                  <small>/100</small>
+                </div>
+              </div>
+              <div class="score-copy">
+                <div class="grade-line">
+                  <span id="gradeBadge" class="grade-badge grade-exposed">
+                    Exposed
+                  </span>
+                  <span id="policyName">Support agent — draft</span>
+                </div>
+                <h4 id="scoreHeadline">Policy needs containment</h4>
+                <p id="scoreDescription">
+                  Run the suite to see where authority escapes its intended boundary.
+                </p>
+                <div class="score-metrics">
+                  <div>
+                    <strong id="passedCount">0</strong>
+                    <span>protected</span>
+                  </div>
+                  <div>
+                    <strong id="failedCount">0</strong>
+                    <span>exposed</span>
+                  </div>
+                  <div>
+                    <strong id="criticalCount">0</strong>
+                    <span>critical</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="result-tabs" role="tablist" aria-label="Report sections">
+              <button
+                class="tab-button active"
+                id="findingsTab"
+                data-tab="findings"
+                role="tab"
+                aria-selected="true"
+                type="button"
+              >
+                Findings <span id="findingTotal">0</span>
+              </button>
+              <button
+                class="tab-button"
+                id="testsTab"
+                data-tab="tests"
+                role="tab"
+                aria-selected="false"
+                type="button"
+              >
+                Attack deck <span>14</span>
+              </button>
+              <button
+                class="tab-button"
+                id="proofTab"
+                data-tab="proof"
+                role="tab"
+                aria-selected="false"
+                type="button"
+              >
+                Proof
+              </button>
+            </div>
+
+            <div class="tab-panel active" id="findingsPanel" role="tabpanel">
+              <div class="finding-filters" aria-label="Filter findings by severity">
+                <button class="severity-filter active" data-severity="all" type="button">All</button>
+                <button class="severity-filter" data-severity="critical" type="button">Critical</button>
+                <button class="severity-filter" data-severity="high" type="button">High</button>
+                <button class="severity-filter" data-severity="medium" type="button">Medium</button>
+              </div>
+              <div id="findingsList" class="finding-list"></div>
+            </div>
+
+            <div class="tab-panel" id="testsPanel" role="tabpanel" hidden>
+              <div class="test-list" id="testList"></div>
+            </div>
+
+            <div class="tab-panel" id="proofPanel" role="tabpanel" hidden>
+              <div class="proof-overview">
+                <div class="proof-status">
+                  <span class="proof-icon" aria-hidden="true">#</span>
+                  <div>
+                    <p>Local proof receipt</p>
+                    <strong id="receiptStatus">Ready to generate</strong>
+                  </div>
+                  <span class="status-pill">not anchored</span>
+                </div>
+
+                <dl class="proof-fields">
+                  <div>
+                    <dt>Policy hash</dt>
+                    <dd id="policyHash">—</dd>
+                  </div>
+                  <div>
+                    <dt>Report hash</dt>
+                    <dd id="reportHash">—</dd>
+                  </div>
+                  <div>
+                    <dt>Generated</dt>
+                    <dd id="generatedAt">—</dd>
+                  </div>
+                </dl>
+
+                <div class="rialo-payload">
+                  <div class="payload-heading">
+                    <div>
+                      <p>Rialo attestation payload</p>
+                      <span>Prepared locally. No transaction is submitted.</span>
+                    </div>
+                    <button class="icon-button" id="copyPayload" type="button" aria-label="Copy Rialo payload">
+                      Copy
+                    </button>
+                  </div>
+                  <pre id="payloadPreview"></pre>
+                </div>
+
+                <div class="proof-actions">
+                  <button class="button button-small button-accent" id="downloadReport" type="button">
+                    Download report
+                  </button>
+                  <button class="button button-small button-ghost" id="copyReceipt" type="button">
+                    Copy receipt
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="why-section" id="why">
+        <div class="section-heading section-heading-light">
+          <div>
+            <p class="section-kicker">The missing layer</p>
+            <h2>Enforcement is only half the job.</h2>
+          </div>
+          <p>
+            Latch enforces a policy. LatchLens asks the uncomfortable question:
+            does the policy actually express what its owner meant?
+          </p>
+        </div>
+
+        <div class="value-grid">
+          <article class="value-card value-card-featured">
+            <div class="value-index">01</div>
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
+                <circle cx="12" cy="12" r="3.5" />
+              </svg>
+            </div>
+            <h3>Attack, not checklist</h3>
+            <p>
+              It turns one pipeline into boundary cases: destructive verbs,
+              endpoint confusion, token theft, cost bursts, PII egress and
+              signer wildcard abuse.
+            </p>
+          </article>
+
+          <article class="value-card">
+            <div class="value-index">02</div>
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 5h14v14H5zM8 9h8M8 12h5M8 15h7" />
+              </svg>
+            </div>
+            <h3>Explain every denial</h3>
+            <p>
+              Every scenario includes the ordered first-deny trace, so builders
+              can distinguish real protection from accidental breakage.
+            </p>
+          </article>
+
+          <article class="value-card">
+            <div class="value-index">03</div>
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3l7 4v5c0 4.5-2.8 7.3-7 9-4.2-1.7-7-4.5-7-9V7l7-4z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+            </div>
+            <h3>Proof, not screenshots</h3>
+            <p>
+              Reports are deterministically hashed and shaped for a Rialo
+              attestation, turning a one-time test into portable evidence.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="architecture-section" id="architecture">
+        <div class="architecture-copy">
+          <p class="section-kicker">Rialo-native roadmap</p>
+          <h2>Continuous assurance, without another keeper.</h2>
+          <p>
+            The MVP runs locally and never asks for a credential. The production
+            design uses Latch Simulate for canonical decisions and a Rialo
+            workflow to re-run suites, detect drift and anchor only the report
+            hash—not the private policy.
+          </p>
+          <div class="architecture-tags">
+            <span>Native timers</span>
+            <span>Native HTTPS</span>
+            <span>Reactive alerts</span>
+            <span>Private policy</span>
+          </div>
+        </div>
+
+        <div class="flow-map" aria-label="LatchLens production architecture">
+          <div class="flow-node">
+            <span class="flow-number">01</span>
+            <small>INPUT</small>
+            <strong>Latch policy</strong>
+            <p>Scoped rules stay private.</p>
+          </div>
+          <div class="flow-connector"><span></span></div>
+          <div class="flow-node flow-node-active">
+            <span class="flow-number">02</span>
+            <small>TEST</small>
+            <strong>LatchLens deck</strong>
+            <p>Boundaries are attacked.</p>
+          </div>
+          <div class="flow-connector"><span></span></div>
+          <div class="flow-node">
+            <span class="flow-number">03</span>
+            <small>VERIFY</small>
+            <strong>Latch Simulate</strong>
+            <p>Canonical traces confirm.</p>
+          </div>
+          <div class="flow-connector"><span></span></div>
+          <div class="flow-node">
+            <span class="flow-number">04</span>
+            <small>PROVE</small>
+            <strong>Rialo receipt</strong>
+            <p>Hash and score are anchored.</p>
+          </div>
+        </div>
+
+        <div class="roadmap-note">
+          <div>
+            <span class="roadmap-signal"></span>
+            <strong>MVP boundary</strong>
+          </div>
+          <p>
+            This version is an honest local prototype. Live Latch API calls and
+            the Rialo DevNet attestor require project credentials and deployment;
+            the UI never pretends they already happened.
+          </p>
+        </div>
+      </section>
+
+      <section class="closing-section">
+        <div>
+          <p class="section-kicker">Built for builders</p>
+          <h2>A safer agent starts with a policy you tried to defeat.</h2>
+        </div>
+        <button class="button button-primary" id="closingRun" type="button">
+          Test the sample policy
+        </button>
+      </section>
+    </main>
+
+    <footer>
+      <div class="brand footer-brand">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>LatchLens</span>
+      </div>
+      <p>
+        Independent prototype for the Rialo builder ecosystem. Latch and Rialo
+        remain trademarks of their respective owners.
+      </p>
+      <div class="footer-links">
+        <a href="https://onlatch.com/docs" target="_blank" rel="noreferrer">Latch docs</a>
+        <a href="https://www.rialo.io/for-devs" target="_blank" rel="noreferrer">Rialo dev portal</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

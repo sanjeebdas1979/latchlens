@@ -1,0 +1,17 @@
+[package]
+name = "latchlens-attestor"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+implementation = []
+
+[dependencies]
+rialo-venus = "0.18.1"
+rialo-venus-proc-macro = "0.18.1"
+rialo-s-program = "0.18.1"
