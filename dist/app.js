@@ -1,9 +1,12 @@
 import {
   TEMPLATES,
   analyzePolicy,
+  attachRialoAttestation,
   buildAssuranceReport,
   buildLiveVerificationPlan,
+  buildRialoAnchorBundle,
   buildRialoPayload,
+  buildRialoVerificationRequest,
   createReceipt,
   hardenPolicy,
   normalizePolicy,
@@ -30,6 +33,11 @@ const liveVerifyResults = document.querySelector("#liveVerifyResults");
 const latchTokenInput = document.querySelector("#latchToken");
 const reportFileInput = document.querySelector("#reportFileInput");
 const reportVerification = document.querySelector("#reportVerification");
+const anchorStatusPill = document.querySelector("#anchorStatusPill");
+const devnetStatus = document.querySelector("#devnetStatus");
+const devnetSignature = document.querySelector("#devnetSignature");
+const verifyDevnetAnchor = document.querySelector("#verifyDevnetAnchor");
+const devnetResult = document.querySelector("#devnetResult");
 
 let analysis = null;
 let receipt = null;
@@ -40,6 +48,9 @@ let toastTimer = null;
 let guideReturnFocus = null;
 let liveReturnFocus = null;
 let liveRunController = null;
+let devnetReady = false;
+let devnetProgramId = null;
+let devnetStatusLoaded = false;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -255,12 +266,19 @@ function shortHash(value) {
 
 function renderProof(nextReceipt, payload) {
   const comparedLive = nextReceipt.mode === "latch-authorize-compared";
-  document.querySelector("#receiptStatus").textContent = comparedLive
-    ? "Receipt binds the live comparison"
-    : "Deterministic local receipt generated";
-  document.querySelector("#reportMode").textContent = comparedLive
-    ? "live compared"
-    : "draft proof";
+  const anchored = nextReceipt.rialo?.status === "anchored";
+  document.querySelector("#receiptStatus").textContent = anchored
+    ? "Receipt anchored and RPC-verified"
+    : comparedLive
+      ? "Receipt binds the live comparison"
+      : "Deterministic local receipt generated";
+  document.querySelector("#reportMode").textContent = anchored
+    ? "devnet anchored"
+    : comparedLive
+      ? "live compared"
+      : "draft proof";
+  anchorStatusPill.textContent = anchored ? "anchored" : "not anchored";
+  anchorStatusPill.classList.toggle("anchored", anchored);
   document.querySelector("#policyHash").textContent = shortHash(
     nextReceipt.policyHash,
   );
@@ -272,7 +290,97 @@ function renderProof(nextReceipt, payload) {
   document.querySelector("#generatedAt").textContent = new Date(
     nextReceipt.generatedAt,
   ).toLocaleString();
+  const programId = anchored ? nextReceipt.rialo.programId : devnetProgramId;
+  document.querySelector("#anchorProgramId").textContent = programId
+    ? shortHash(programId)
+    : "not deployed";
+  document.querySelector("#anchorProgramId").title = programId || "";
+  const transactionSignature = anchored
+    ? nextReceipt.rialo.transactionSignature
+    : null;
+  document.querySelector("#anchorTransaction").textContent =
+    transactionSignature ? shortHash(transactionSignature) : "not submitted";
+  document.querySelector("#anchorTransaction").title =
+    transactionSignature || "";
+  document.querySelector("#payloadState").textContent = anchored
+    ? "Confirmed by the fixed public Rialo DevNet RPC."
+    : "Prepared locally. No transaction is submitted.";
   document.querySelector("#payloadPreview").textContent = pretty(payload);
+  updateDevnetControls();
+}
+
+function updateDevnetControls() {
+  verifyDevnetAnchor.disabled = !devnetReady || !receipt;
+}
+
+function resetDevnetResult() {
+  devnetSignature.value = "";
+  devnetResult.hidden = true;
+  devnetResult.className = "devnet-result";
+  devnetResult.innerHTML = "";
+}
+
+function renderDevnetResult(kind, title, detail) {
+  devnetResult.hidden = false;
+  devnetResult.className =
+    "devnet-result" + (kind === "error" ? " error" : "");
+  devnetResult.innerHTML =
+    "<strong>" +
+    escapeHtml(title) +
+    "</strong><p>" +
+    escapeHtml(detail) +
+    "</p>";
+}
+
+async function loadDevnetStatus(force) {
+  if (devnetStatusLoaded && !force) return;
+  devnetStatusLoaded = true;
+  devnetStatus.className = "devnet-readiness";
+  devnetStatus.textContent = "Checking deployment…";
+  try {
+    const response = await fetch("/api/rialo-attestation", {
+      method: "GET",
+      cache: "no-store",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error("Status endpoint unavailable.");
+    devnetReady = data.ready === true;
+    devnetProgramId = devnetReady ? data.programId : null;
+    devnetStatus.textContent = devnetReady
+      ? "Verifier ready"
+      : "Program deployment pending";
+    devnetStatus.classList.toggle("ready", devnetReady);
+    if (receipt && receipt.rialo?.status !== "anchored") {
+      renderProof(receipt, rialoPayload);
+    }
+  } catch {
+    devnetReady = false;
+    devnetProgramId = null;
+    devnetStatus.textContent = "Status check unavailable";
+    devnetStatus.className = "devnet-readiness error";
+  } finally {
+    updateDevnetControls();
+  }
+}
+
+async function requestDevnetEvidence(nextReceipt, signature) {
+  const requestBody = buildRialoVerificationRequest(nextReceipt, signature);
+  const response = await fetch("/api/rialo-attestation", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(requestBody),
+    cache: "no-store",
+  });
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("The DevNet verifier returned an invalid response.");
+  }
+  if (!response.ok || !data.valid || !data.evidence) {
+    throw new Error(data.error || "The transaction did not match this receipt.");
+  }
+  return data.evidence;
 }
 
 function resetReportVerification() {
@@ -331,6 +439,11 @@ async function runAnalysis(options) {
   const quiet = options?.quiet;
   resetLiveVerification();
   resetReportVerification();
+  resetDevnetResult();
+  analysis = null;
+  receipt = null;
+  rialoPayload = null;
+  updateDevnetControls();
   try {
     setEditorState("running");
     const policy = normalizePolicy(editor.value);
@@ -371,6 +484,7 @@ function selectTab(name) {
     panel.classList.toggle("active", active);
     panel.hidden = !active;
   });
+  if (name === "proof") loadDevnetStatus();
 }
 
 function loadTemplate(key, announce) {
@@ -705,11 +819,114 @@ async function runLiveVerification(event) {
   }
 }
 
+function prepareDevnetAnchorRequest() {
+  if (!receipt) {
+    showToast("Run the suite before preparing an anchor.", "error");
+    return;
+  }
+  try {
+    const bundle = buildRialoAnchorBundle(receipt);
+    if (devnetProgramId) bundle.program.programId = devnetProgramId;
+    downloadJson("latchlens-rialo-anchor-request.json", bundle);
+    renderDevnetResult(
+      "success",
+      "Anchor request downloaded",
+      devnetProgramId
+        ? "Submit these exact values with your owner-controlled DevNet wallet, then paste the confirmed signature here."
+        : "The deterministic values are ready. Deploy the attestor and configure its program ID before submitting them.",
+    );
+    showToast("DevNet anchor request downloaded.");
+  } catch (error) {
+    renderDevnetResult(
+      "error",
+      "Could not prepare anchor",
+      error.message || "Generate a fresh receipt and try again.",
+    );
+  }
+}
+
+async function verifyDevnetTransaction() {
+  if (!receipt) {
+    showToast("Run the suite before verifying an anchor.", "error");
+    return;
+  }
+  if (!devnetReady) {
+    renderDevnetResult(
+      "error",
+      "Verifier is not ready",
+      "Deploy LatchLensAttestor and configure its public program ID first.",
+    );
+    return;
+  }
+
+  const receiptBeingVerified = receipt;
+  const publicSignature = devnetSignature.value;
+  try {
+    buildRialoVerificationRequest(receiptBeingVerified, publicSignature);
+  } catch (error) {
+    renderDevnetResult(
+      "error",
+      "Check the transaction signature",
+      error.message || "Paste a valid public Rialo signature.",
+    );
+    devnetSignature.focus();
+    return;
+  }
+
+  verifyDevnetAnchor.disabled = true;
+  verifyDevnetAnchor.textContent = "Verifying…";
+  renderDevnetResult(
+    "success",
+    "Reading Rialo DevNet",
+    "Checking the confirmed transaction, configured program and exact receipt commitments.",
+  );
+
+  try {
+    const evidence = await requestDevnetEvidence(
+      receiptBeingVerified,
+      publicSignature,
+    );
+    if (receipt?.reportHash !== receiptBeingVerified.reportHash) {
+      throw new Error("The policy changed while verification was running. Try again.");
+    }
+
+    receipt = attachRialoAttestation(receiptBeingVerified, evidence);
+    rialoPayload = buildRialoPayload(receipt);
+    renderProof(receipt, rialoPayload);
+    devnetSignature.value = "";
+    renderDevnetResult(
+      "success",
+      "DevNet anchor verified",
+      "Program and commitments matched at block " + evidence.blockHeight + ". Download the report again to keep the evidence.",
+    );
+    showToast("Rialo DevNet anchor verified.");
+  } catch (error) {
+    renderDevnetResult(
+      "error",
+      "DevNet verification failed",
+      error.message || "The transaction could not be verified.",
+    );
+    showToast(error.message || "DevNet verification failed.", "error");
+  } finally {
+    verifyDevnetAnchor.textContent = "Verify DevNet anchor";
+    updateDevnetControls();
+  }
+}
+
 editor.addEventListener("input", () => {
   updateLineNumbers();
   setEditorState("edited");
   resetLiveVerification();
   resetReportVerification();
+  resetDevnetResult();
+  analysis = null;
+  receipt = null;
+  rialoPayload = null;
+  document.querySelector("#receiptStatus").textContent =
+    "Policy changed — run the suite again";
+  anchorStatusPill.textContent = "refresh needed";
+  anchorStatusPill.classList.remove("anchored");
+  updateDevnetControls();
 });
 
 editor.addEventListener("scroll", () => {
@@ -850,7 +1067,25 @@ reportFileInput.addEventListener("change", async (event) => {
       throw new Error("Choose a LatchLens report smaller than 1 MB.");
     }
     const policy = normalizePolicy(editor.value);
-    const result = await verifyAssuranceReport(await file.text(), policy);
+    const downloadedReport = JSON.parse(await file.text());
+    const verificationOptions = {};
+    if (downloadedReport?.receipt?.rialo?.status === "anchored") {
+      try {
+        verificationOptions.rialoEvidence = await requestDevnetEvidence(
+          downloadedReport.receipt,
+          downloadedReport.receipt.rialo.transactionSignature,
+        );
+      } catch (error) {
+        verificationOptions.rialoError =
+          "Fresh Rialo confirmation failed: " +
+          (error.message || "public RPC verification was unavailable.");
+      }
+    }
+    const result = await verifyAssuranceReport(
+      downloadedReport,
+      policy,
+      verificationOptions,
+    );
     renderReportVerification(result, file.name);
     showToast(
       result.valid
@@ -876,6 +1111,11 @@ document.querySelector("#copyPayload").addEventListener("click", () => {
   copyText(pretty(rialoPayload), "Rialo payload copied.");
 });
 
+document
+  .querySelector("#prepareDevnetAnchor")
+  .addEventListener("click", prepareDevnetAnchorRequest);
+verifyDevnetAnchor.addEventListener("click", verifyDevnetTransaction);
+
 const saved = localStorage.getItem("latchlens.policy");
 if (saved) {
   try {
@@ -888,3 +1128,4 @@ if (saved) {
 }
 
 runAnalysis({ quiet: true });
+loadDevnetStatus();

@@ -117,6 +117,7 @@ test("the proof UI supports local verification without a Latch token", async () 
   assert.match(html, /id="reportFileInput"[\s\S]*accept="\.json,application\/json"/);
   assert.match(html, /id="reportVerification"[\s\S]*aria-live="polite"/);
   assert.match(html, /id="liveUseLocal"/);
-  assert.match(app, /verifyAssuranceReport\(await file\.text\(\), policy\)/);
+  assert.match(app, /verifyAssuranceReport\(\s*downloadedReport,/);
+  assert.match(app, /requestDevnetEvidence\([\s\S]*transactionSignature/);
   assert.match(app, /Local proof is complete without a Latch token/);
 });

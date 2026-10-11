@@ -1337,6 +1337,54 @@ async function sha256Hex(value) {
     .join("");
 }
 
+export const RIALO_DEVNET = Object.freeze({
+  name: "Rialo DevNet",
+  rpc: "https://devnet.rialo.io:4101",
+});
+
+const RECEIPT_SCHEMA_V1 = "latchlens.policy-proof.v1";
+const RECEIPT_SCHEMA_V2 = "latchlens.policy-proof.v2";
+const ATTESTATION_SCHEMA = "latchlens.rialo-attestation.v1";
+const ANCHOR_EVIDENCE_SCHEMA = "latchlens.rialo-anchor-evidence.v1";
+const HASH_PATTERN = /^[a-f0-9]{64}$/;
+const BASE58_PATTERN = /^[1-9A-HJ-NP-Za-km-z]+$/;
+
+export function splitHashToU64(hash) {
+  if (!HASH_PATTERN.test(hash || "")) {
+    throw new Error("A Rialo commitment must be a 64-character SHA-256 hash.");
+  }
+  return Array.from({ length: 4 }, (_, index) =>
+    BigInt("0x" + hash.slice(index * 16, index * 16 + 16)).toString(),
+  );
+}
+
+function generatedAtMilliseconds(receipt) {
+  const timestamp = Date.parse(receipt.generatedAt);
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0) {
+    throw new Error("The receipt has an invalid generation time.");
+  }
+  return String(timestamp);
+}
+
+function buildAttestationArgs(receipt) {
+  const policyLimbs = splitHashToU64(receipt.policyHash);
+  const reportLimbs = splitHashToU64(receipt.reportHash);
+  return {
+    policy_hash_0: policyLimbs[0],
+    policy_hash_1: policyLimbs[1],
+    policy_hash_2: policyLimbs[2],
+    policy_hash_3: policyLimbs[3],
+    report_hash_0: reportLimbs[0],
+    report_hash_1: reportLimbs[1],
+    report_hash_2: reportLimbs[2],
+    report_hash_3: reportLimbs[3],
+    score: String(receipt.score),
+    passed: String(receipt.passed),
+    failed: String(receipt.failed),
+    generated_at: generatedAtMilliseconds(receipt),
+  };
+}
+
 export async function createReceipt(analysis, liveVerification) {
   const generatedAt = new Date().toISOString();
   const liveSummary = liveVerification
@@ -1352,9 +1400,9 @@ export async function createReceipt(analysis, liveVerification) {
       }
     : null;
   const core = {
-    schema: "latchlens.policy-proof.v1",
+    schema: RECEIPT_SCHEMA_V2,
     generatedAt,
-    engine: "LatchLens local mirror 0.3.0",
+    engine: "LatchLens local mirror 0.4.0",
     mode: liveSummary ? "latch-authorize-compared" : "local-draft",
     policyName: analysis.policy.name || "Imported policy",
     policyHash: await sha256Hex(stableStringify(analysis.policy)),
@@ -1370,27 +1418,181 @@ export async function createReceipt(analysis, liveVerification) {
     reportHash: await sha256Hex(stableStringify(core)),
     rialo: {
       status: "not-anchored",
-      network: "Rialo DevNet",
+      network: RIALO_DEVNET.name,
+      rpc: RIALO_DEVNET.rpc,
       program: "LatchLensAttestor — deployment required",
     },
   };
 }
 
 export function buildRialoPayload(receipt) {
+  if (receipt.schema === RECEIPT_SCHEMA_V1) {
+    return {
+      network: "Rialo DevNet",
+      program: "LatchLensAttestor",
+      instruction: "attest_policy_report",
+      args: {
+        report_hash: receipt.reportHash,
+        policy_hash: receipt.policyHash,
+        score: receipt.score,
+        passed: receipt.passed,
+        failed: receipt.failed,
+        generated_at: receipt.generatedAt,
+      },
+      status: "prepared-not-submitted",
+    };
+  }
+
+  if (receipt.schema !== RECEIPT_SCHEMA_V2) {
+    throw new Error("Unsupported LatchLens receipt schema.");
+  }
+
+  const anchored = receipt.rialo?.status === "anchored";
   return {
-    network: "Rialo DevNet",
+    schema: ATTESTATION_SCHEMA,
+    network: RIALO_DEVNET.name,
+    rpc: RIALO_DEVNET.rpc,
     program: "LatchLensAttestor",
+    programId: anchored ? receipt.rialo.programId : null,
     instruction: "attest_policy_report",
-    args: {
-      report_hash: receipt.reportHash,
-      policy_hash: receipt.policyHash,
+    args: buildAttestationArgs(receipt),
+    commitments: {
+      policyHash: receipt.policyHash,
+      reportHash: receipt.reportHash,
+    },
+    status: anchored ? "submitted-confirmed" : "prepared-not-submitted",
+    ...(anchored
+      ? {
+          transaction: {
+            signature: receipt.rialo.transactionSignature,
+            blockHeight: receipt.rialo.blockHeight,
+            verifiedAt: receipt.rialo.verifiedAt,
+          },
+        }
+      : {}),
+  };
+}
+
+export function buildRialoAnchorBundle(receipt) {
+  if (receipt.schema !== RECEIPT_SCHEMA_V2) {
+    throw new Error("Generate a fresh v0.4 receipt before preparing an anchor.");
+  }
+  const payload = buildRialoPayload({
+    ...receipt,
+    rialo: {
+      status: "not-anchored",
+      network: RIALO_DEVNET.name,
+      rpc: RIALO_DEVNET.rpc,
+    },
+  });
+  return {
+    schema: "latchlens.rialo-anchor-request.v1",
+    preparedAt: new Date().toISOString(),
+    network: {
+      name: RIALO_DEVNET.name,
+      rpc: RIALO_DEVNET.rpc,
+    },
+    program: {
+      name: "LatchLensAttestor",
+      instruction: payload.instruction,
+      programId: null,
+    },
+    receipt: {
+      schema: receipt.schema,
+      policyHash: receipt.policyHash,
+      reportHash: receipt.reportHash,
       score: receipt.score,
       passed: receipt.passed,
       failed: receipt.failed,
-      generated_at: receipt.generatedAt,
+      generatedAt: receipt.generatedAt,
     },
-    status: "prepared-not-submitted",
+    invocation: {
+      args: payload.args,
+    },
+    safety: {
+      containsPrivateKey: false,
+      signingRequired: true,
+      note: "Sign with an owner-controlled Rialo DevNet wallet; never upload a seed phrase to LatchLens.",
+    },
   };
+}
+
+export function buildRialoVerificationRequest(receipt, signature) {
+  const normalizedSignature = String(signature || "").trim();
+  if (
+    normalizedSignature.length < 64 ||
+    normalizedSignature.length > 96 ||
+    !BASE58_PATTERN.test(normalizedSignature)
+  ) {
+    throw new Error("Enter a valid Rialo transaction signature.");
+  }
+  if (receipt.schema !== RECEIPT_SCHEMA_V2) {
+    throw new Error("Generate a fresh v0.4 receipt before verifying an anchor.");
+  }
+  return {
+    signature: normalizedSignature,
+    expected: {
+      schema: ATTESTATION_SCHEMA,
+      policyHash: receipt.policyHash,
+      reportHash: receipt.reportHash,
+      score: String(receipt.score),
+      passed: String(receipt.passed),
+      failed: String(receipt.failed),
+      generatedAt: generatedAtMilliseconds(receipt),
+    },
+  };
+}
+
+function anchoredEvidenceMatches(receipt, evidence) {
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    return false;
+  }
+  const expected = buildAttestationArgs(receipt);
+  return (
+    evidence.schema === ANCHOR_EVIDENCE_SCHEMA &&
+    evidence.network === RIALO_DEVNET.name &&
+    evidence.rpc === RIALO_DEVNET.rpc &&
+    typeof evidence.programId === "string" &&
+    evidence.programId.length >= 32 &&
+    evidence.programId.length <= 64 &&
+    BASE58_PATTERN.test(evidence.programId) &&
+    typeof evidence.transactionSignature === "string" &&
+    evidence.transactionSignature.length >= 64 &&
+    evidence.transactionSignature.length <= 96 &&
+    BASE58_PATTERN.test(evidence.transactionSignature) &&
+    /^(0|[1-9][0-9]*)$/.test(String(evidence.blockHeight ?? "")) &&
+    evidence.policyHash === receipt.policyHash &&
+    evidence.reportHash === receipt.reportHash &&
+    String(evidence.score) === expected.score &&
+    String(evidence.passed) === expected.passed &&
+    String(evidence.failed) === expected.failed &&
+    String(evidence.generatedAt) === expected.generated_at &&
+    typeof evidence.verifiedAt === "string" &&
+    Number.isFinite(Date.parse(evidence.verifiedAt))
+  );
+}
+
+export function attachRialoAttestation(receiptInput, evidenceInput) {
+  const receipt = clone(receiptInput);
+  const evidence = clone(evidenceInput);
+  if (receipt.schema !== RECEIPT_SCHEMA_V2) {
+    throw new Error("Only v0.4 receipts can carry a DevNet anchor.");
+  }
+  if (!anchoredEvidenceMatches(receipt, evidence)) {
+    throw new Error("The DevNet evidence does not match this receipt.");
+  }
+  receipt.rialo = {
+    status: "anchored",
+    network: RIALO_DEVNET.name,
+    rpc: RIALO_DEVNET.rpc,
+    program: "LatchLensAttestor",
+    programId: evidence.programId,
+    transactionSignature: evidence.transactionSignature,
+    blockHeight: String(evidence.blockHeight),
+    verifiedAt: evidence.verifiedAt,
+    evidence,
+  };
+  return receipt;
 }
 
 function reportAnalysis(analysis) {
@@ -1436,7 +1638,7 @@ function sameValue(left, right) {
   return stableStringify(left) === stableStringify(right);
 }
 
-export async function verifyAssuranceReport(reportInput, policyInput) {
+export async function verifyAssuranceReport(reportInput, policyInput, options) {
   const report =
     typeof reportInput === "string" ? JSON.parse(reportInput) : clone(reportInput);
   if (!report || typeof report !== "object" || Array.isArray(report)) {
@@ -1449,9 +1651,9 @@ export async function verifyAssuranceReport(reportInput, policyInput) {
   }
 
   const checks = [];
-  const hashPattern = /^[a-f0-9]{64}$/;
+  const hashPattern = HASH_PATTERN;
   const hasReceiptShape =
-    receipt.schema === "latchlens.policy-proof.v1" &&
+    [RECEIPT_SCHEMA_V1, RECEIPT_SCHEMA_V2].includes(receipt.schema) &&
     hashPattern.test(receipt.policyHash || "") &&
     hashPattern.test(receipt.reportHash || "");
   checks.push(
@@ -1589,18 +1791,55 @@ export async function verifyAssuranceReport(reportInput, policyInput) {
     ),
   );
 
-  const anchorClaimIsSafe =
+  const legacyUnanchored =
+    receipt.schema === RECEIPT_SCHEMA_V1 &&
     receiptRialo?.status === "not-anchored" &&
-    receiptRialo?.network === "Rialo DevNet" &&
+    receiptRialo?.network === RIALO_DEVNET.name &&
     report.rialoPayload?.status === "prepared-not-submitted";
+  const currentUnanchored =
+    receipt.schema === RECEIPT_SCHEMA_V2 &&
+    receiptRialo?.status === "not-anchored" &&
+    receiptRialo?.network === RIALO_DEVNET.name &&
+    receiptRialo?.rpc === RIALO_DEVNET.rpc &&
+    report.rialoPayload?.status === "prepared-not-submitted";
+  const embeddedAnchorIsConsistent =
+    receipt.schema === RECEIPT_SCHEMA_V2 &&
+    receiptRialo?.status === "anchored" &&
+    anchoredEvidenceMatches(receipt, receiptRialo.evidence) &&
+    receiptRialo.programId === receiptRialo.evidence.programId &&
+    receiptRialo.transactionSignature ===
+      receiptRialo.evidence.transactionSignature &&
+    report.rialoPayload?.status === "submitted-confirmed";
+  const freshAnchorEvidence = options?.rialoEvidence;
+  const freshAnchorMatches =
+    embeddedAnchorIsConsistent &&
+    anchoredEvidenceMatches(receipt, freshAnchorEvidence) &&
+    freshAnchorEvidence.programId === receiptRialo.programId &&
+    freshAnchorEvidence.transactionSignature ===
+      receiptRialo.transactionSignature &&
+    String(freshAnchorEvidence.blockHeight) ===
+      String(receiptRialo.blockHeight);
+  const currentAnchored = embeddedAnchorIsConsistent && freshAnchorMatches;
+  const anchorClaimIsSafe =
+    legacyUnanchored || currentUnanchored || currentAnchored;
+  let anchorDetail = "The file contains an unsupported or misleading anchor claim.";
+  if (currentAnchored) {
+    anchorDetail =
+      "A fresh read from the fixed Rialo DevNet RPC confirms this program, transaction and receipt.";
+  } else if (legacyUnanchored || currentUnanchored) {
+    anchorDetail =
+      "The file correctly says the proof has not been submitted onchain.";
+  } else if (embeddedAnchorIsConsistent) {
+    anchorDetail =
+      options?.rialoError ||
+      "Fresh public RPC confirmation is required for this anchored report.";
+  }
   checks.push(
     verificationCheck(
       "anchor-claim",
       "Anchor claim",
       anchorClaimIsSafe,
-      anchorClaimIsSafe
-        ? "The file correctly says the proof has not been submitted onchain."
-        : "The file contains an unsupported or misleading anchor claim.",
+      anchorDetail,
     ),
   );
 

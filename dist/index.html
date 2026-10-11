@@ -327,7 +327,7 @@
                     <p>Local proof receipt</p>
                     <strong id="receiptStatus">Ready to generate</strong>
                   </div>
-                  <span class="status-pill">not anchored</span>
+                  <span class="status-pill" id="anchorStatusPill">not anchored</span>
                 </div>
 
                 <dl class="proof-fields">
@@ -343,13 +343,21 @@
                     <dt>Generated</dt>
                     <dd id="generatedAt">—</dd>
                   </div>
+                  <div>
+                    <dt>Program ID</dt>
+                    <dd id="anchorProgramId">not deployed</dd>
+                  </div>
+                  <div>
+                    <dt>Transaction</dt>
+                    <dd id="anchorTransaction">not submitted</dd>
+                  </div>
                 </dl>
 
                 <div class="rialo-payload">
                   <div class="payload-heading">
                     <div>
                       <p>Rialo attestation payload</p>
-                      <span>Prepared locally. No transaction is submitted.</span>
+                      <span id="payloadState">Prepared locally. No transaction is submitted.</span>
                     </div>
                     <button class="icon-button" id="copyPayload" type="button" aria-label="Copy Rialo payload">
                       Copy
@@ -357,6 +365,44 @@
                   </div>
                   <pre id="payloadPreview"></pre>
                 </div>
+
+                <section class="devnet-anchor" aria-labelledby="devnetAnchorTitle">
+                  <div class="devnet-anchor-heading">
+                    <div>
+                      <p class="devnet-kicker">Optional onchain proof</p>
+                      <h3 id="devnetAnchorTitle">Anchor on Rialo DevNet</h3>
+                    </div>
+                    <span class="devnet-readiness" id="devnetStatus" role="status">
+                      Checking deployment…
+                    </span>
+                  </div>
+                  <p>
+                    Download the deterministic request, submit it with your own
+                    DevNet wallet, then paste only the public transaction signature.
+                    LatchLens never asks for a seed phrase or private key.
+                  </p>
+                  <div class="devnet-actions">
+                    <button class="button button-small button-ghost" id="prepareDevnetAnchor" type="button">
+                      Download anchor request
+                    </button>
+                    <label class="devnet-signature">
+                      <span>Confirmed transaction signature</span>
+                      <input
+                        id="devnetSignature"
+                        type="text"
+                        inputmode="text"
+                        autocomplete="off"
+                        spellcheck="false"
+                        maxlength="96"
+                        placeholder="Paste the public DevNet signature"
+                      />
+                    </label>
+                    <button class="button button-small button-accent" id="verifyDevnetAnchor" type="button" disabled>
+                      Verify DevNet anchor
+                    </button>
+                  </div>
+                  <div class="devnet-result" id="devnetResult" aria-live="polite" hidden></div>
+                </section>
 
                 <div class="proof-actions">
                   <button class="button button-small button-accent" id="downloadReport" type="button">
@@ -605,7 +651,7 @@
             <span class="guide-step-number">06</span>
             <div>
               <h3>Verify live, then export</h3>
-              <p>Optionally compare six cases with Latch Authorize, download the report, then verify it locally.</p>
+              <p>Optionally compare six cases with Latch, anchor with your own DevNet wallet, then download and verify the report.</p>
             </div>
           </li>
         </ol>
@@ -613,9 +659,9 @@
         <div class="guide-note">
           <strong>MVP boundary</strong>
           <span>
-            Local mode is credential-free. Live mode uses a lat_ token transiently
-            for six calls through the fixed adapter; the Rialo payload is still not
-            submitted onchain.
+            Local mode is credential-free. Live Latch mode uses a lat_ token
+            transiently through the fixed adapter. DevNet anchoring is optional,
+            owner-signed, and sends LatchLens only a public transaction signature.
           </span>
         </div>
 

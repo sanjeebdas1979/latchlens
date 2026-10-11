@@ -14,12 +14,13 @@ wallet, explorer, prediction market, or generic dashboard.
 
 ## Current proof boundary
 
-The v0.3 browser verifier can re-import an assurance report and validate nine
+The v0.4 browser verifier can re-import an assurance report and validate nine
 claims locally: receipt shape, receipt hash, current-policy hash, deterministic
 attack-deck replay, score summary, optional live-evidence hash, prepared Rialo
-payload, the honest `not-anchored` status, and local-versus-live mode
-consistency. The raw policy stays out of the report, so verification requires
-the matching policy in the editor.
+payload, an honest anchored or `not-anchored` claim, and local-versus-live mode
+consistency. When anchored, it carries public RPC evidence for the configured
+attestor program and exact twelve-value commitment. The raw policy stays out of
+the report, so verification requires the matching policy in the editor.
 
 ## Public builder scan
 
@@ -55,6 +56,8 @@ unindexed implementation can exist.
   https://onlatch.com/docs/guides/extending-latches
 - Rialo GitHub topic: https://github.com/topics/rialo
 - Rialo Venus DSL 0.18.1: https://docs.rs/rialo-venus-dsl/0.18.1
+- Rialo CDK 0.18.1: https://docs.rs/rialo-cdk/0.18.1/rialo_cdk/
+- Rialo TypeScript CDK 0.18.1: https://www.npmjs.com/package/@rialo/ts-cdk
 
 ## Production milestones
 
@@ -62,6 +65,7 @@ unindexed implementation can exist.
 2. Expand the current Latch Authorize adapter as more safe simulation context
    becomes available; keep unsupported cases explicitly local.
 3. Create property-based generators from each filter's boundary values.
-4. Deploy and verify `LatchLensAttestor` on Rialo DevNet.
+4. Owner-deploy `LatchLensAttestor` on Rialo DevNet and pin its public ID in
+   Vercel; the read-only verification path is already implemented.
 5. Schedule drift tests with a Rialo workflow and emit alerts only on changes.
 6. Add cryptographic report signatures and a public, policy-redacted proof page.

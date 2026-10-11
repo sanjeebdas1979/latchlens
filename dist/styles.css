@@ -1320,6 +1320,11 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.status-pill.anchored {
+  background: #dff3e8;
+  color: #176848;
+}
+
 .proof-fields {
   display: grid;
   gap: 6px;
@@ -1413,6 +1418,131 @@ textarea:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.devnet-anchor {
+  display: grid;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid rgba(23, 104, 72, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #f8fcf9, #edf6f1);
+}
+
+.devnet-anchor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.devnet-anchor-heading h3,
+.devnet-kicker,
+.devnet-anchor > p {
+  margin: 0;
+}
+
+.devnet-kicker {
+  color: #4d7b68;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.devnet-anchor-heading h3 {
+  color: #153e30;
+  font-size: 15px;
+}
+
+.devnet-anchor > p {
+  color: #4d665c;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.devnet-readiness {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f2e9d5;
+  color: #76561b;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.devnet-readiness.ready {
+  background: #dff3e8;
+  color: #176848;
+}
+
+.devnet-readiness.error {
+  background: #f8dedb;
+  color: #993a34;
+}
+
+.devnet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 9px;
+}
+
+.devnet-signature {
+  flex: 1 1 250px;
+  display: grid;
+  gap: 5px;
+  color: #486257;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.devnet-signature input {
+  width: 100%;
+  min-height: 37px;
+  padding: 8px 10px;
+  border: 1px solid rgba(18, 45, 36, 0.2);
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #173d2f;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.devnet-signature input:focus {
+  border-color: #2f9b6e;
+  box-shadow: 0 0 0 3px rgba(47, 155, 110, 0.14);
+}
+
+.devnet-result {
+  padding: 10px 11px;
+  border-left: 3px solid #2f9b6e;
+  border-radius: 6px;
+  background: #e4f4eb;
+  color: #22503e;
+  font-size: 13px;
+}
+
+.devnet-result[hidden] {
+  display: none;
+}
+
+.devnet-result.error {
+  border-left-color: #c64e47;
+  background: #f9e8e6;
+  color: #8e342f;
+}
+
+.devnet-result strong,
+.devnet-result p {
+  margin: 0;
+}
+
+.devnet-result p {
+  margin-top: 3px;
 }
 
 .report-verification {
