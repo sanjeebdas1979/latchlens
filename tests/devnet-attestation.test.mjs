@@ -224,10 +224,14 @@ test("the API verifies a confirmed transaction through the fixed DevNet RPC", as
 });
 
 test("the Proof tab exposes an accessible owner-signed DevNet flow", async () => {
-  const [html, app, rust] = await Promise.all([
+  const [html, app, rust, artifactManifest, artifactBuild, artifactLib] =
+    await Promise.all([
     readFile(new URL("dist/index.html", root), "utf8"),
     readFile(new URL("dist/app.js", root), "utf8"),
     readFile(new URL("program/src/lib.rs", root), "utf8"),
+    readFile(new URL("program/artifact/Cargo.toml", root), "utf8"),
+    readFile(new URL("program/artifact/build.rs", root), "utf8"),
+    readFile(new URL("program/artifact/src/lib.rs", root), "utf8"),
   ]);
 
   assert.match(html, /id="prepareDevnetAnchor"/);
@@ -240,4 +244,8 @@ test("the Proof tab exposes an accessible owner-signed DevNet flow", async () =>
   assert.match(rust, /ProgramError::InvalidArgument/);
   assert.match(rust, /msg!\("latchlens:v1"\)/);
   assert.match(rust, /msg!\("generated_at=\{\}"/);
+  assert.match(artifactManifest, /rialo-build-lib = "=0\.18\.1"/);
+  assert.match(artifactBuild, /setup_polkavm_artifact_build/);
+  assert.match(artifactBuild, /\.program_path\("\.\."\)/);
+  assert.match(artifactLib, /RIALO_BUILD_ARTIFACT_FILE/);
 });

@@ -37,7 +37,7 @@ From the repository, make the non-signing checks first:
 ```bash
 npm test
 cd program
-cargo check
+cargo +rialo check
 ```
 
 Do not put a seed, mnemonic, private key or wallet export in this repository,
@@ -45,9 +45,35 @@ Do not put a seed, mnemonic, private key or wallet export in this repository,
 
 ## 2. Build and deploy the attestor
 
-Use the build/deploy command shown by the current official Rialo toolchain for a
-Venus workflow in `program/`. Deployment must target **Rialo DevNet** and be
-signed locally by the owner's wallet. Record the returned public program ID.
+The repository includes the official stable-Cargo artifact wrapper expected by
+`rialo client program deploy-venus`. From `program/`, build the PolkaVM blob:
+
+```bash
+cargo build --manifest-path artifact/Cargo.toml
+find target/rialo-build -type f -name '*.polkavm' -print
+```
+
+The wrapper calls the pinned `rialo-build-lib` 0.18.1 helper, which runs the
+owner-installed `cargo +rialo` toolchain against the sibling program and writes
+the discoverable artifact under `program/target/rialo-build/`.
+
+Keep the payer and program-identity keys separate. The payer alias used in this
+runbook is `latchlens-devnet`; create the program key once if it does not exist:
+
+```bash
+rialo keytool generate latchlens-program
+```
+
+Then deploy from `program/` to **Rialo DevNet**:
+
+```bash
+rialo -n devnet -a latchlens-devnet client program deploy-venus . \
+  --keypair "$HOME/.config/rialo/latchlens-program.keypair"
+```
+
+This is an owner-signed DevNet transaction and spends only DevNet RLO. Record
+the returned public program ID; never copy either keypair file into the
+repository, Vercel, Discord, a report, or an anchor request.
 
 Before continuing, confirm all of these:
 

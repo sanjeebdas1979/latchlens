@@ -1,0 +1,7 @@
+package rialo:latchlens-attestor@0.1.0;
+
+use rialo:primitives@0.1.0.{pubkey, lamports, timestamp, error};
+
+world latchlens-attestor {
+    export attest-policy-report: func(policy-hash-0: u64, policy-hash-1: u64, policy-hash-2: u64, policy-hash-3: u64, report-hash-0: u64, report-hash-1: u64, report-hash-2: u64, report-hash-3: u64, score: u64, passed: u64, failed: u64, generated-at: u64) -> result<_, error>;
+}
