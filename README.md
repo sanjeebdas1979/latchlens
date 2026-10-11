@@ -18,6 +18,10 @@ the attack deck and checks the receipt hash, current-policy binding, live
 evidence claim, Rialo payload, and honest `not-anchored` status without sending
 the report or policy anywhere.
 
+Version 0.3.1 raises the working lab's typography floor so the policy editor,
+findings, proof metadata, and all nine verification checks remain readable at
+100% browser zoom.
+
 ## Why this project
 
 The public Rialo builder landscape already contains explorers, prediction

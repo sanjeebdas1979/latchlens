@@ -2538,3 +2538,142 @@ body.guide-open {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Readability pass: keep the working lab legible at 100% browser zoom. */
+.mode-note {
+  font-size: 14px;
+}
+
+.mode-note span,
+.template-control > span {
+  font-size: 11px;
+}
+
+.button-small {
+  font-size: 14px;
+}
+
+.panel-number {
+  font-size: 12px;
+}
+
+.panel-label {
+  font-size: 10px;
+}
+
+.panel-topline h3 {
+  font-size: 18px;
+}
+
+.editor-state,
+.report-mode {
+  font-size: 11px;
+}
+
+.code-gutter,
+#policyEditor {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.editor-footer p,
+.text-button {
+  font-size: 13px;
+}
+
+.score-core small,
+.grade-line,
+.score-metrics span {
+  font-size: 11px;
+}
+
+.score-copy > p {
+  font-size: 14px;
+}
+
+.score-metrics strong {
+  font-size: 17px;
+}
+
+.tab-button {
+  font-size: 13px;
+}
+
+.tab-button span,
+.severity-filter {
+  font-size: 11px;
+}
+
+.severity-filter {
+  min-height: 31px;
+}
+
+.finding-title strong,
+.test-title strong {
+  font-size: 13px;
+}
+
+.finding-title span,
+.test-title span {
+  font-size: 10px;
+}
+
+.finding-detail,
+.test-detail {
+  font-size: 12px;
+}
+
+.trace-row {
+  font-size: 11px;
+}
+
+.empty-state {
+  font-size: 13px;
+}
+
+.proof-status p {
+  font-size: 11px;
+}
+
+.proof-status strong {
+  font-size: 13px;
+}
+
+.status-pill {
+  font-size: 10px;
+}
+
+.proof-fields dt,
+.proof-fields dd {
+  font-size: 11px;
+}
+
+.payload-heading p {
+  font-size: 12px;
+}
+
+.payload-heading span,
+.icon-button {
+  font-size: 10px;
+}
+
+.rialo-payload pre {
+  font-size: 12px;
+}
+
+.report-verification-heading strong {
+  font-size: 13px;
+}
+
+.report-verification-heading p {
+  font-size: 11px;
+}
+
+.report-verification li > span,
+.report-verification li p {
+  font-size: 11px;
+}
+
+.report-verification li strong {
+  font-size: 12px;
+}
