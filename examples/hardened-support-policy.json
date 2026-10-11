@@ -1,0 +1,94 @@
+{
+  "name": "Support agent — hardened",
+  "mutability": "attenuate_only",
+  "inheritanceMode": "live",
+  "filters": [
+    {
+      "type": "method",
+      "name": "Common verbs",
+      "allowed": ["GET", "POST"]
+    },
+    {
+      "type": "endpoint",
+      "name": "Support endpoints only",
+      "mode": "allowlist",
+      "patterns": [
+        "/v1/chat/completions",
+        "/v1/models/*"
+      ]
+    },
+    {
+      "type": "payload",
+      "name": "Approved models and token limit",
+      "rules": [
+        {
+          "path": "model",
+          "operator": "in",
+          "value": [
+            "gpt-4o-mini",
+            "claude-haiku-4-5"
+          ],
+          "reason": "Only approved support models are allowed."
+        },
+        {
+          "path": "max_tokens",
+          "operator": "less_than_or_equal",
+          "value": 4096
+        }
+      ]
+    },
+    {
+      "type": "body_size",
+      "name": "128 KB request cap",
+      "maxBytes": 131072
+    },
+    {
+      "type": "rate_limit",
+      "name": "30 requests per minute",
+      "maxRequests": 30,
+      "windowSeconds": 60,
+      "keyBy": "latch"
+    },
+    {
+      "type": "spend_limit",
+      "name": "$10 daily ceiling — review",
+      "maxDailyCents": 1000,
+      "pricing": "flat",
+      "costPerRequestCents": 1
+    },
+    {
+      "type": "identity",
+      "name": "Replace with enrolled agent key",
+      "allowedAgentKids": ["kid_replace_me"],
+      "minAssurance": "self_asserted"
+    },
+    {
+      "type": "response",
+      "name": "Common PII redaction",
+      "rules": [
+        {
+          "redactPaths": [
+            "$.customers[*].ssn",
+            "$.customers[*].email",
+            "$.customer.phone"
+          ],
+          "redactMode": "placeholder",
+          "maxResponseBytes": 1048576
+        }
+      ]
+    },
+    {
+      "type": "time_window",
+      "name": "Weekday operations",
+      "timezone": "Asia/Kolkata",
+      "windows": [
+        {
+          "days": [1, 2, 3, 4, 5],
+          "startTime": "08:00",
+          "endTime": "20:00"
+        }
+      ]
+    }
+  ],
+  "expiresAt": "2026-11-09T23:59:59Z"
+}
