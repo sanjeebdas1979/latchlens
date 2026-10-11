@@ -1,6 +1,6 @@
 # Research and differentiation notes
 
-Research snapshot: 10 October 2026.
+Research snapshot: 11 October 2026.
 
 ## Product thesis
 
@@ -39,6 +39,9 @@ unindexed implementation can exist.
 - Latch documentation: https://onlatch.com/docs
 - Latch filter reference: https://onlatch.com/docs/reference/filters
 - Latch simulation: https://onlatch.com/docs/guides/simulate
+- Latch proxy API and dry-run Authorize endpoint:
+  https://onlatch.com/docs/reference/proxy-api
+- Latch OpenAPI schema: https://onlatch.com/openapi.json
 - Latch extension and attenuation:
   https://onlatch.com/docs/guides/extending-latches
 - Rialo GitHub topic: https://github.com/topics/rialo
@@ -47,7 +50,8 @@ unindexed implementation can exist.
 ## Production milestones
 
 1. Map the local schema exactly to the current Latch API schema.
-2. Add authenticated Latch Simulate calls through a small server-side adapter.
+2. Expand the current Latch Authorize adapter as more safe simulation context
+   becomes available; keep unsupported cases explicitly local.
 3. Create property-based generators from each filter's boundary values.
 4. Deploy and verify `LatchLensAttestor` on Rialo DevNet.
 5. Schedule drift tests with a Rialo workflow and emit alerts only on changes.

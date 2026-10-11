@@ -566,7 +566,9 @@ function baselineRequest(policy) {
   }
 
   return {
-    method: methods?.allowed?.[0] || "POST",
+    method: methods?.allowed?.includes("POST")
+      ? "POST"
+      : methods?.allowed?.[0] || "POST",
     path: allowedPath,
     body,
     headers,
@@ -796,6 +798,68 @@ export function buildTestDeck(policyInput) {
         "Replace the '*' signer with explicit Rialo or EVM authorizer keys.",
     },
   ];
+}
+
+const LIVE_AUTHORIZE_CASES = new Set([
+  "intended-call",
+  "destructive-delete",
+  "admin-export",
+  "path-confusion",
+  "model-escalation",
+  "token-explosion",
+]);
+
+const LIVE_SKIP_REASONS = {
+  "oversized-body":
+    "Skipped to avoid sending a synthetic multi-megabyte payload through the browser adapter.",
+  "identity-theft":
+    "The authorize endpoint derives identity from the live latch context; it does not accept a simulated agent key.",
+  "off-hours":
+    "The authorize endpoint evaluates the current clock; it does not accept a simulated day or time.",
+  "rate-flood":
+    "A dry run cannot safely manufacture one hundred prior requests.",
+  "spend-burst":
+    "The authorize request has no synthetic cost field; live budget state remains authoritative.",
+  "pii-response":
+    "Response redaction runs after an upstream response, while authorize never calls the upstream.",
+  "delegation-narrows":
+    "Delegation mutability is a policy-structure assertion, not one hypothetical HTTP request.",
+  "signer-wildcard":
+    "Signer scope is checked structurally because authorize does not accept a simulated authorizer field.",
+};
+
+function authorizeRequest(request) {
+  return {
+    method: request.method,
+    path: request.path,
+    headers: request.headers || {},
+    body: request.body ?? {},
+  };
+}
+
+export function buildLiveVerificationPlan(policyInput) {
+  const deck = buildTestDeck(policyInput);
+  return {
+    runnable: deck
+      .filter((test) => LIVE_AUTHORIZE_CASES.has(test.id))
+      .map((test) => ({
+        id: test.id,
+        title: test.title,
+        category: test.category,
+        severity: test.severity,
+        expected: test.expected,
+        request: authorizeRequest(test.request),
+      })),
+    skipped: deck
+      .filter((test) => !LIVE_AUTHORIZE_CASES.has(test.id))
+      .map((test) => ({
+        id: test.id,
+        title: test.title,
+        reason:
+          LIVE_SKIP_REASONS[test.id] ||
+          "This scenario is verified by the local structural engine.",
+      })),
+  };
 }
 
 export function runSuite(policyInput) {
@@ -1263,13 +1327,25 @@ async function sha256Hex(value) {
     .join("");
 }
 
-export async function createReceipt(analysis) {
+export async function createReceipt(analysis, liveVerification) {
   const generatedAt = new Date().toISOString();
+  const liveSummary = liveVerification
+    ? {
+        schema: liveVerification.schema,
+        endpoint: liveVerification.endpoint,
+        verifiedAt: liveVerification.verifiedAt,
+        checked: liveVerification.checked,
+        matched: liveVerification.matched,
+        mismatched: liveVerification.mismatched,
+        skipped: liveVerification.skipped,
+        evidenceHash: await sha256Hex(stableStringify(liveVerification)),
+      }
+    : null;
   const core = {
     schema: "latchlens.policy-proof.v1",
     generatedAt,
-    engine: "LatchLens local mirror 0.1.0",
-    mode: "local-draft",
+    engine: "LatchLens local mirror 0.2.0",
+    mode: liveSummary ? "latch-authorize-compared" : "local-draft",
     policyName: analysis.policy.name || "Imported policy",
     policyHash: await sha256Hex(stableStringify(analysis.policy)),
     score: analysis.score,
@@ -1277,6 +1353,7 @@ export async function createReceipt(analysis) {
     passed: analysis.passed,
     failed: analysis.failed,
     findingCodes: analysis.findings.map((item) => item.code).sort(),
+    ...(liveSummary ? { liveVerification: liveSummary } : {}),
   };
   return {
     ...core,

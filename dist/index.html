@@ -145,8 +145,8 @@
             <h2>Policy attack lab</h2>
           </div>
           <div class="mode-note">
-            <span>Local mirror</span>
-            Confirm final behavior with Latch Simulate
+            <span>Local-first</span>
+            Optional live comparison uses Latch Authorize
           </div>
         </div>
 
@@ -172,6 +172,16 @@
             </button>
             <button class="button button-small button-ghost" id="formatButton" type="button">
               Format
+            </button>
+            <button
+              class="button button-small button-ghost"
+              id="liveVerifyButton"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="liveVerifyDialog"
+              aria-expanded="false"
+            >
+              Live Latch verify
             </button>
             <button class="button button-small button-accent" id="runButton" type="button">
               Run 14 attacks
@@ -206,7 +216,7 @@
 
             <div class="editor-footer">
               <p>
-                Secrets and tokens are not needed. Analysis stays in this tab.
+                Local analysis stays in this browser. Never paste secrets into policy JSON.
               </p>
               <button class="text-button" id="hardenButton" type="button">
                 Apply safe hardening patch
@@ -224,7 +234,7 @@
                   <h3 id="resultTitle">Attack surface</h3>
                 </div>
               </div>
-              <span class="report-mode">draft proof</span>
+              <span class="report-mode" id="reportMode">draft proof</span>
             </div>
 
             <div class="score-zone">
@@ -427,10 +437,11 @@
           <p class="section-kicker">Rialo-native roadmap</p>
           <h2>Continuous assurance, without another keeper.</h2>
           <p>
-            The MVP runs locally and never asks for a credential. The production
-            design uses Latch Simulate for canonical decisions and a Rialo
-            workflow to re-run suites, detect drift and anchor only the report
-            hash—not the private policy.
+            Local analysis never needs a credential. Optional Live Latch Verify
+            sends six safe hypothetical requests through a narrow Vercel adapter
+            to Latch Authorize, then compares canonical decisions with the local
+            mirror. A Rialo workflow can later detect drift and anchor only the
+            report hash—not the private policy.
           </p>
           <div class="architecture-tags">
             <span>Native timers</span>
@@ -458,7 +469,7 @@
           <div class="flow-node">
             <span class="flow-number">03</span>
             <small>VERIFY</small>
-            <strong>Latch Simulate</strong>
+            <strong>Latch Authorize</strong>
             <p>Canonical traces confirm.</p>
           </div>
           <div class="flow-connector"><span></span></div>
@@ -476,9 +487,9 @@
             <strong>MVP boundary</strong>
           </div>
           <p>
-            This version is an honest local prototype. Live Latch API calls and
-            the Rialo DevNet attestor require project credentials and deployment;
-            the UI never pretends they already happened.
+            Local results remain drafts until explicitly checked. Live verification
+            is opt-in, labels skipped context-only cases, and never claims a Rialo
+            anchor; the DevNet attestor still requires deployment.
           </p>
         </div>
       </section>
@@ -535,7 +546,7 @@
 
         <p class="guide-intro" id="guideIntro">
           Test a sample or your own Latch policy, inspect every exposed boundary,
-          then export deterministic evidence. No wallet or API key is required.
+          then export deterministic evidence. Local analysis needs no wallet or token.
         </p>
 
         <ol class="guide-steps">
@@ -577,8 +588,8 @@
           <li class="guide-step">
             <span class="guide-step-number">06</span>
             <div>
-              <h3>Export the proof</h3>
-              <p>Use Proof to download the report or copy the receipt and Rialo payload.</p>
+              <h3>Verify live, then export</h3>
+              <p>Optionally compare six cases with Latch Authorize, then use Proof to download the report.</p>
             </div>
           </li>
         </ol>
@@ -586,8 +597,9 @@
         <div class="guide-note">
           <strong>MVP boundary</strong>
           <span>
-            Results are generated locally. The displayed Rialo payload is prepared,
-            not submitted or anchored onchain.
+            Local mode is credential-free. Live mode uses a lat_ token transiently
+            for six calls through the fixed adapter; the Rialo payload is still not
+            submitted onchain.
           </span>
         </div>
 
@@ -599,6 +611,97 @@
             Got it
           </button>
         </div>
+      </section>
+    </div>
+
+    <div class="guide-backdrop" id="liveVerifyModal" hidden>
+      <section
+        class="guide-dialog live-dialog"
+        id="liveVerifyDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="liveVerifyTitle"
+        aria-describedby="liveVerifyIntro"
+      >
+        <div class="guide-heading">
+          <div>
+            <p class="section-kicker">Canonical comparison · opt-in</p>
+            <h2 id="liveVerifyTitle">Verify with live Latch</h2>
+          </div>
+          <button
+            class="guide-close"
+            id="liveVerifyClose"
+            type="button"
+            aria-label="Close live verification"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <p class="guide-intro" id="liveVerifyIntro">
+          Compare the local mirror with the effective policy attached to your
+          Latch token. Authorize returns decisions without calling the upstream
+          or using its protected credential.
+        </p>
+
+        <form id="liveVerifyForm" class="live-form">
+          <label class="live-token-label" for="latchToken">
+            <span>Latch access token</span>
+            <input
+              id="latchToken"
+              name="latch-token"
+              type="password"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="lat_…"
+              required
+            />
+          </label>
+
+          <div class="live-safety">
+            <strong>Token boundary</strong>
+            <span>
+              The token is sent over HTTPS to this site's Vercel Function, which
+              forwards it only to Latch's fixed authorize endpoint. LatchLens code
+              does not persist, log, echo or include it in reports. The input is
+              cleared as soon as verification starts.
+            </span>
+          </div>
+
+          <div class="live-plan" aria-label="Live verification coverage">
+            <div>
+              <strong>6</strong>
+              <span>canonical requests</span>
+            </div>
+            <div>
+              <strong>8</strong>
+              <span>local context checks</span>
+            </div>
+            <p>
+              Identity, clock, rate, spend, response, delegation, signer and
+              oversized-body scenarios remain local because Authorize cannot
+              safely simulate that context.
+            </p>
+          </div>
+
+          <div class="live-actions">
+            <button class="button button-primary" id="liveVerifyRun" type="submit">
+              Run 6 live checks
+            </button>
+            <button class="button button-ghost" id="liveVerifyCancel" type="button">
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div
+          class="live-results"
+          id="liveVerifyResults"
+          aria-live="polite"
+          hidden
+        ></div>
       </section>
     </div>
 
