@@ -362,10 +362,26 @@
                   <button class="button button-small button-accent" id="downloadReport" type="button">
                     Download report
                   </button>
+                  <input
+                    type="file"
+                    id="reportFileInput"
+                    accept=".json,application/json"
+                    hidden
+                  />
+                  <button class="button button-small button-ghost" id="verifyReport" type="button">
+                    Verify downloaded report
+                  </button>
                   <button class="button button-small button-ghost" id="copyReceipt" type="button">
                     Copy receipt
                   </button>
                 </div>
+
+                <div
+                  class="report-verification"
+                  id="reportVerification"
+                  aria-live="polite"
+                  hidden
+                ></div>
               </div>
             </div>
           </section>
@@ -589,7 +605,7 @@
             <span class="guide-step-number">06</span>
             <div>
               <h3>Verify live, then export</h3>
-              <p>Optionally compare six cases with Latch Authorize, then use Proof to download the report.</p>
+              <p>Optionally compare six cases with Latch Authorize, download the report, then verify it locally.</p>
             </div>
           </li>
         </ol>
@@ -684,6 +700,19 @@
               oversized-body scenarios remain local because Authorize cannot
               safely simulate that context.
             </p>
+          </div>
+
+          <div class="live-no-token">
+            <div>
+              <strong>No Latch token yet?</strong>
+              <span>
+                Your 14-case local proof is still complete. Live comparison is
+                optional and can be added later.
+              </span>
+            </div>
+            <button class="text-button" id="liveUseLocal" type="button">
+              Continue with local proof →
+            </button>
           </div>
 
           <div class="live-actions">

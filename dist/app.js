@@ -1,11 +1,13 @@
 import {
   TEMPLATES,
   analyzePolicy,
+  buildAssuranceReport,
   buildLiveVerificationPlan,
   buildRialoPayload,
   createReceipt,
   hardenPolicy,
   normalizePolicy,
+  verifyAssuranceReport,
 } from "./engine.js";
 
 const editor = document.querySelector("#policyEditor");
@@ -26,6 +28,8 @@ const liveVerifyForm = document.querySelector("#liveVerifyForm");
 const liveVerifyRun = document.querySelector("#liveVerifyRun");
 const liveVerifyResults = document.querySelector("#liveVerifyResults");
 const latchTokenInput = document.querySelector("#latchToken");
+const reportFileInput = document.querySelector("#reportFileInput");
+const reportVerification = document.querySelector("#reportVerification");
 
 let analysis = null;
 let receipt = null;
@@ -271,6 +275,49 @@ function renderProof(nextReceipt, payload) {
   document.querySelector("#payloadPreview").textContent = pretty(payload);
 }
 
+function resetReportVerification() {
+  if (!reportVerification) return;
+  reportVerification.hidden = true;
+  reportVerification.className = "report-verification";
+  reportVerification.innerHTML = "";
+}
+
+function renderReportVerification(result, filename) {
+  const passed = result.checks.filter((check) => check.passed).length;
+  const items = result.checks
+    .map(
+      (check) =>
+        '<li class="' +
+        (check.passed ? "pass" : "fail") +
+        '"><span aria-hidden="true">' +
+        (check.passed ? "✓" : "×") +
+        "</span><div><strong>" +
+        escapeHtml(check.label) +
+        "</strong><p>" +
+        escapeHtml(check.detail) +
+        "</p></div></li>",
+    )
+    .join("");
+
+  reportVerification.hidden = false;
+  reportVerification.className =
+    "report-verification " + (result.valid ? "verified" : "invalid");
+  reportVerification.innerHTML =
+    '<div class="report-verification-heading"><span aria-hidden="true">' +
+    (result.valid ? "✓" : "!") +
+    "</span><div><strong>" +
+    (result.valid ? "Proof verified" : "Proof needs review") +
+    "</strong><p>" +
+    escapeHtml(filename) +
+    " · " +
+    escapeHtml(String(passed)) +
+    "/" +
+    escapeHtml(String(result.checks.length)) +
+    " checks passed</p></div></div><ul>" +
+    items +
+    "</ul>";
+}
+
 function resetLiveVerification() {
   liveVerification = null;
   document.querySelector("#reportMode").textContent = "draft proof";
@@ -283,6 +330,7 @@ function resetLiveVerification() {
 async function runAnalysis(options) {
   const quiet = options?.quiet;
   resetLiveVerification();
+  resetReportVerification();
   try {
     setEditorState("running");
     const policy = normalizePolicy(editor.value);
@@ -661,6 +709,7 @@ editor.addEventListener("input", () => {
   updateLineNumbers();
   setEditorState("edited");
   resetLiveVerification();
+  resetReportVerification();
 });
 
 editor.addEventListener("scroll", () => {
@@ -725,6 +774,12 @@ liveVerifyModal.addEventListener("click", (event) => {
 });
 liveVerifyModal.addEventListener("keydown", keepLiveFocus);
 liveVerifyForm.addEventListener("submit", runLiveVerification);
+document.querySelector("#liveUseLocal").addEventListener("click", () => {
+  closeLiveVerify({ restoreFocus: false });
+  selectTab("proof");
+  document.querySelector("#lab").scrollIntoView({ behavior: "smooth" });
+  showToast("Local proof is complete without a Latch token.");
+});
 
 templateSelect.addEventListener("change", () =>
   loadTemplate(templateSelect.value, true),
@@ -771,30 +826,44 @@ document.querySelector("#downloadReport").addEventListener("click", () => {
     showToast("Run the suite before exporting.", "error");
     return;
   }
-  downloadJson("latchlens-assurance-report.json", {
-    receipt,
-    analysis: {
-      score: analysis.score,
-      grade: analysis.grade,
-      counts: analysis.counts,
-      findings: analysis.findings,
-      tests: analysis.tests.map((test) => ({
-        id: test.id,
-        title: test.title,
-        category: test.category,
-        severity: test.severity,
-        status: test.status,
-        actual: test.actual,
-        deniedBy: test.deniedBy,
-        reason: test.reason,
-        remediation: test.remediation,
-        trace: test.trace,
-      })),
-    },
-    ...(liveVerification ? { liveVerification } : {}),
-    rialoPayload,
-  });
+  downloadJson(
+    "latchlens-assurance-report.json",
+    buildAssuranceReport(
+      analysis,
+      receipt,
+      rialoPayload,
+      liveVerification,
+    ),
+  );
   showToast("Assurance report downloaded.");
+});
+
+document.querySelector("#verifyReport").addEventListener("click", () => {
+  reportFileInput.click();
+});
+
+reportFileInput.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    if (file.size > 1024 * 1024) {
+      throw new Error("Choose a LatchLens report smaller than 1 MB.");
+    }
+    const policy = normalizePolicy(editor.value);
+    const result = await verifyAssuranceReport(await file.text(), policy);
+    renderReportVerification(result, file.name);
+    showToast(
+      result.valid
+        ? "Proof verified against the current policy."
+        : "Proof verification found a mismatch.",
+      result.valid ? undefined : "error",
+    );
+  } catch (error) {
+    resetReportVerification();
+    showToast(error.message || "That report could not be verified.", "error");
+  } finally {
+    event.target.value = "";
+  }
 });
 
 document.querySelector("#copyReceipt").addEventListener("click", () => {

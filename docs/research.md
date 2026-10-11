@@ -12,6 +12,15 @@ owner's intent before an autonomous agent gets the authority.
 LatchLens is therefore a policy red-team and evidence layer, not another
 wallet, explorer, prediction market, or generic dashboard.
 
+## Current proof boundary
+
+The v0.3 browser verifier can re-import an assurance report and validate nine
+claims locally: receipt shape, receipt hash, current-policy hash, deterministic
+attack-deck replay, score summary, optional live-evidence hash, prepared Rialo
+payload, the honest `not-anchored` status, and local-versus-live mode
+consistency. The raw policy stays out of the report, so verification requires
+the matching policy in the editor.
+
 ## Public builder scan
 
 The scan covered the Rialo GitHub topic and recently indexed public projects.
@@ -55,4 +64,4 @@ unindexed implementation can exist.
 3. Create property-based generators from each filter's boundary values.
 4. Deploy and verify `LatchLensAttestor` on Rialo DevNet.
 5. Schedule drift tests with a Rialo workflow and emit alerts only on changes.
-6. Add signed report verification and a public, policy-redacted proof page.
+6. Add cryptographic report signatures and a public, policy-redacted proof page.

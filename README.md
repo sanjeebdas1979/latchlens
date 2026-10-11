@@ -5,12 +5,18 @@
 LatchLens is a local-first red-team lab for Latch policies. It turns a policy
 pipeline into fourteen adversarial cases, explains the first denying filter,
 proposes safer defaults, optionally compares safe cases with Latch's canonical
-Authorize endpoint, and exports a SHA-256 receipt shaped for Rialo.
+Authorize endpoint, exports a SHA-256 receipt shaped for Rialo, and verifies a
+downloaded report locally against the policy currently in the editor.
 
 Live prototype: https://latchlens.vercel.app/
 
 New users can open **User guide** in the site header for a six-step walkthrough
 from choosing a sample policy to exporting the local proof receipt.
+
+Version 0.3 adds **Verify downloaded report** under the Proof tab. It replays
+the attack deck and checks the receipt hash, current-policy binding, live
+evidence claim, Rialo payload, and honest `not-anchored` status without sending
+the report or policy anywhere.
 
 ## Why this project
 
@@ -68,6 +74,20 @@ explosion. Eight cases stay local because the endpoint cannot safely inject a
 fake clock, identity, request history, spend state, upstream response,
 delegation state, signer identity, or multi-megabyte body. The report records
 each skip instead of presenting it as live proof.
+
+## Verify a downloaded proof
+
+1. Keep the same policy in the editor, or import the exact policy used to make
+   the report.
+2. Open **Proof** and choose **Verify downloaded report**.
+3. Select `latchlens-assurance-report.json`.
+4. Review the nine local checks. A valid result confirms that the receipt,
+   policy, attack-deck replay, optional live evidence and prepared Rialo payload
+   still agree.
+
+The report deliberately does not embed the private policy. If the editor holds
+a different policy, the verifier fails the policy-binding and replay checks
+instead of making a false claim.
 
 Production integration should:
 

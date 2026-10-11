@@ -898,7 +898,7 @@ function finding(code, title, severity, detail, fix, source) {
   };
 }
 
-function structuralFindings(policy) {
+function structuralFindings(policy, now = Date.now()) {
   const findings = [];
   const method = firstFilter(policy, "method");
   const endpoint = firstFilter(policy, "endpoint");
@@ -1070,7 +1070,7 @@ function structuralFindings(policy) {
         "structure",
       ),
     );
-  } else if (new Date(policy.expiresAt).getTime() <= Date.now()) {
+  } else if (new Date(policy.expiresAt).getTime() <= now) {
     findings.push(
       finding(
         "EXPIRED",
@@ -1143,10 +1143,20 @@ function dedupeFindings(findings) {
   });
 }
 
-export function analyzePolicy(policyInput) {
+export function analyzePolicy(policyInput, options) {
   const policy = normalizePolicy(policyInput);
   const tests = runSuite(policy);
-  const findings = structuralFindings(policy);
+  const requestedNow = options?.now;
+  const parsedNow =
+    typeof requestedNow === "number"
+      ? requestedNow
+      : requestedNow
+        ? new Date(requestedNow).getTime()
+        : Date.now();
+  const findings = structuralFindings(
+    policy,
+    Number.isFinite(parsedNow) ? parsedNow : Date.now(),
+  );
 
   for (const test of tests.filter((item) => item.status === "fail")) {
     findings.push(
@@ -1344,7 +1354,7 @@ export async function createReceipt(analysis, liveVerification) {
   const core = {
     schema: "latchlens.policy-proof.v1",
     generatedAt,
-    engine: "LatchLens local mirror 0.2.0",
+    engine: "LatchLens local mirror 0.3.0",
     mode: liveSummary ? "latch-authorize-compared" : "local-draft",
     policyName: analysis.policy.name || "Imported policy",
     policyHash: await sha256Hex(stableStringify(analysis.policy)),
@@ -1380,5 +1390,240 @@ export function buildRialoPayload(receipt) {
       generated_at: receipt.generatedAt,
     },
     status: "prepared-not-submitted",
+  };
+}
+
+function reportAnalysis(analysis) {
+  return clone({
+    score: analysis.score,
+    grade: analysis.grade,
+    counts: analysis.counts,
+    findings: analysis.findings,
+    tests: analysis.tests.map((test) => ({
+      id: test.id,
+      title: test.title,
+      category: test.category,
+      severity: test.severity,
+      status: test.status,
+      actual: test.actual,
+      deniedBy: test.deniedBy,
+      reason: test.reason,
+      remediation: test.remediation,
+      trace: test.trace,
+    })),
+  });
+}
+
+export function buildAssuranceReport(
+  analysis,
+  receipt,
+  rialoPayload,
+  liveVerification,
+) {
+  return {
+    receipt,
+    analysis: reportAnalysis(analysis),
+    ...(liveVerification ? { liveVerification } : {}),
+    rialoPayload,
+  };
+}
+
+function verificationCheck(id, label, passed, detail) {
+  return { id, label, passed, detail };
+}
+
+function sameValue(left, right) {
+  return stableStringify(left) === stableStringify(right);
+}
+
+export async function verifyAssuranceReport(reportInput, policyInput) {
+  const report =
+    typeof reportInput === "string" ? JSON.parse(reportInput) : clone(reportInput);
+  if (!report || typeof report !== "object" || Array.isArray(report)) {
+    throw new Error("The selected file is not a LatchLens assurance report.");
+  }
+
+  const receipt = report.receipt;
+  if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) {
+    throw new Error("The report does not contain a LatchLens receipt.");
+  }
+
+  const checks = [];
+  const hashPattern = /^[a-f0-9]{64}$/;
+  const hasReceiptShape =
+    receipt.schema === "latchlens.policy-proof.v1" &&
+    hashPattern.test(receipt.policyHash || "") &&
+    hashPattern.test(receipt.reportHash || "");
+  checks.push(
+    verificationCheck(
+      "receipt-shape",
+      "Receipt format",
+      hasReceiptShape,
+      hasReceiptShape
+        ? "The schema and SHA-256 fields are well formed."
+        : "The schema or a required SHA-256 field is invalid.",
+    ),
+  );
+
+  const { reportHash: claimedReportHash, rialo: receiptRialo, ...receiptCore } =
+    receipt;
+  const computedReportHash = await sha256Hex(stableStringify(receiptCore));
+  const receiptHashMatches =
+    hashPattern.test(claimedReportHash || "") &&
+    computedReportHash === claimedReportHash;
+  checks.push(
+    verificationCheck(
+      "receipt-hash",
+      "Receipt integrity",
+      receiptHashMatches,
+      receiptHashMatches
+        ? "The receipt core reproduces the downloaded report hash."
+        : "The receipt content changed after its hash was created.",
+    ),
+  );
+
+  const policy = normalizePolicy(policyInput);
+  const computedPolicyHash = await sha256Hex(stableStringify(policy));
+  const policyMatches = computedPolicyHash === receipt.policyHash;
+  checks.push(
+    verificationCheck(
+      "policy-hash",
+      "Current policy binding",
+      policyMatches,
+      policyMatches
+        ? "The policy currently in the editor matches this receipt."
+        : "Load the exact policy used to create this report, then verify again.",
+    ),
+  );
+
+  const replay = analyzePolicy(policy, { now: receipt.generatedAt });
+  const expectedAnalysis = reportAnalysis(replay);
+  const replayMatches = sameValue(report.analysis, expectedAnalysis);
+  checks.push(
+    verificationCheck(
+      "engine-replay",
+      "Attack-deck replay",
+      replayMatches,
+      replayMatches
+        ? "All exported findings and test traces replay identically."
+        : "The exported findings do not match a fresh run of this policy.",
+    ),
+  );
+
+  const expectedSummary = {
+    policyName: replay.policy.name || "Imported policy",
+    score: replay.score,
+    grade: replay.grade,
+    passed: replay.passed,
+    failed: replay.failed,
+    findingCodes: replay.findings.map((item) => item.code).sort(),
+  };
+  const receiptSummary = {
+    policyName: receipt.policyName,
+    score: receipt.score,
+    grade: receipt.grade,
+    passed: receipt.passed,
+    failed: receipt.failed,
+    findingCodes: receipt.findingCodes,
+  };
+  const summaryMatches = sameValue(receiptSummary, expectedSummary);
+  checks.push(
+    verificationCheck(
+      "summary",
+      "Score and findings",
+      summaryMatches,
+      summaryMatches
+        ? "The score, counts and finding codes match the replay."
+        : "The receipt summary does not match the current policy replay.",
+    ),
+  );
+
+  let liveEvidenceMatches = true;
+  let liveDetail = "No live comparison is claimed by this local receipt.";
+  if (receipt.liveVerification) {
+    if (!report.liveVerification) {
+      liveEvidenceMatches = false;
+      liveDetail = "The receipt claims a live comparison, but its evidence is missing.";
+    } else {
+      const evidenceHash = await sha256Hex(
+        stableStringify(report.liveVerification),
+      );
+      const liveSummary = {
+        schema: report.liveVerification.schema,
+        endpoint: report.liveVerification.endpoint,
+        verifiedAt: report.liveVerification.verifiedAt,
+        checked: report.liveVerification.checked,
+        matched: report.liveVerification.matched,
+        mismatched: report.liveVerification.mismatched,
+        skipped: report.liveVerification.skipped,
+        evidenceHash,
+      };
+      liveEvidenceMatches = sameValue(receipt.liveVerification, liveSummary);
+      liveDetail = liveEvidenceMatches
+        ? "The complete live comparison reproduces its evidence hash."
+        : "The live comparison evidence or summary has changed.";
+    }
+  } else if (report.liveVerification) {
+    liveEvidenceMatches = false;
+    liveDetail = "Unbound live evidence was added to a local-only receipt.";
+  }
+  checks.push(
+    verificationCheck(
+      "live-evidence",
+      "Live evidence claim",
+      liveEvidenceMatches,
+      liveDetail,
+    ),
+  );
+
+  const expectedPayload = buildRialoPayload(receipt);
+  const payloadMatches = sameValue(report.rialoPayload, expectedPayload);
+  checks.push(
+    verificationCheck(
+      "rialo-payload",
+      "Rialo payload",
+      payloadMatches,
+      payloadMatches
+        ? "The prepared payload matches the receipt hashes and counts."
+        : "The prepared Rialo payload does not match this receipt.",
+    ),
+  );
+
+  const anchorClaimIsSafe =
+    receiptRialo?.status === "not-anchored" &&
+    receiptRialo?.network === "Rialo DevNet" &&
+    report.rialoPayload?.status === "prepared-not-submitted";
+  checks.push(
+    verificationCheck(
+      "anchor-claim",
+      "Anchor claim",
+      anchorClaimIsSafe,
+      anchorClaimIsSafe
+        ? "The file correctly says the proof has not been submitted onchain."
+        : "The file contains an unsupported or misleading anchor claim.",
+    ),
+  );
+
+  const expectedMode = receipt.liveVerification
+    ? "latch-authorize-compared"
+    : "local-draft";
+  const modeMatches = receipt.mode === expectedMode;
+  checks.push(
+    verificationCheck(
+      "mode",
+      "Verification mode",
+      modeMatches,
+      modeMatches
+        ? receipt.liveVerification
+          ? "This is a live-compared receipt."
+          : "This is a local-draft receipt."
+        : "The receipt mode conflicts with its included evidence.",
+    ),
+  );
+
+  return {
+    valid: checks.every((check) => check.passed),
+    mode: receipt.mode || "unknown",
+    checks,
   };
 }
