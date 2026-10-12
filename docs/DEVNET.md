@@ -1,8 +1,9 @@
 # LatchLens Rialo DevNet runbook
 
-Status: application support is implemented in v0.4.0. The final deployment and
-attestation transactions must be signed by the project owner's Rialo DevNet
-wallet. LatchLens must never receive that wallet's seed phrase or private key.
+Status: the v0.4.0 attestor is deployed on Rialo DevNet and a full public
+attestation was verified on 12 October 2026. Deployment and attestation
+transactions remain owner-signed. LatchLens never receives the wallet's seed
+phrase or private key.
 
 ## What the flow proves
 
@@ -17,6 +18,29 @@ wallet. LatchLens must never receive that wallet's seed phrase or private key.
 This proves that the configured `LatchLensAttestor` recorded the exact receipt
 commitments. It does not claim that a local-only test was executed by Latch; the
 receipt keeps `local-draft` and `latch-authorize-compared` modes distinct.
+
+## Verified public deployment
+
+| Field | Public value |
+| --- | --- |
+| Program ID | `GstS1TAvdytdzYWSauEGouaxmGRYBoiyvjqtHfjWopfp` |
+| Loader | `RiscVLoader11111111111111111111111111111111` |
+| Deployment slot | `29376497` |
+| Attestation block | `29819199` |
+| Result | `100/100` — 14 protected, 0 exposed |
+| Policy SHA-256 | `794b74b578f281ddd79f958e61201c3e1a771354d5b5c1e5e649bf0abb61b073` |
+| Report SHA-256 | `97a0b63a0dd84d2142700bf7edd7cb4fb786e5ebff2fe3af037d711f23439033` |
+
+Attestation transaction signature:
+
+```text
+xeAqtY8qTwZyrHphEHKLTmGLKGvd68o5fdsA3eXFevZxz9XAnDdWrcBAXs4qYCJSHYQLp9HL1huCJ5Bw9VFAYkf
+```
+
+The production verifier freshly read this transaction from the fixed public
+RPC, matched all twelve emitted values, and the downloaded anchored report
+passed all nine local checks. These identifiers are public evidence; no key
+material is included here.
 
 ## 1. Prepare the official toolchain
 
@@ -94,7 +118,7 @@ In Vercel, open **LatchLens → Settings → Environment Variables** and add:
 
 ```text
 Name:  RIALO_ATTESTOR_PROGRAM_ID
-Value: <the public DevNet program ID>
+Value: GstS1TAvdytdzYWSauEGouaxmGRYBoiyvjqtHfjWopfp
 Environment: Production
 ```
 
@@ -125,6 +149,12 @@ it says `false`, verify the variable's spelling/environment and redeploy.
    **Verify DevNet anchor**.
 7. After the UI says **anchored**, click **Download report** again. The earlier
    download is still honestly `not-anchored` and cannot update itself.
+
+Keep the exact receipt loaded while its transaction is being signed. Every new
+suite run creates a fresh `generatedAt` value and therefore a new `reportHash`.
+If the page is reloaded or the suite is run again, an earlier transaction must
+fail the commitment check even when the policy and score look identical. That
+failure is expected binding protection; create and submit the new request.
 
 The twelve values are four big-endian `u64` limbs for each SHA-256 hash, then
 `score`, `passed`, `failed`, and the receipt generation time in Unix
@@ -157,15 +187,16 @@ program IDs, does not submit transactions, and does not need a wallet key.
 | Transaction not confirmed | RPC returned no transaction yet | Wait briefly, then retry |
 | Program was not invoked | Signature belongs to another call | Submit the downloaded request to this attestor |
 | Commitment does not match | Values or report differ | Generate a fresh request and submit it exactly |
+| Transaction does not match `report_hash_0` | The receipt was regenerated after submission | Keep the current receipt unchanged or submit its fresh request |
 | Policy changed while verifying | Editor was changed mid-check | Run the suite again and use its new request |
 | Status check unavailable | Function or network is unavailable | Check Vercel deployment/functions, then retry |
 
 ## Completion checklist
 
-- [ ] All Node tests pass.
-- [ ] The Venus program builds with the official current toolchain.
-- [ ] Owner deploys it to Rialo DevNet.
-- [ ] Vercel reports `ready: true` with the correct public ID.
-- [ ] One real transaction verifies in the Proof tab.
-- [ ] The newly downloaded report verifies 9/9 locally.
-- [ ] The transaction URL/signature and live demo are added to the submission.
+- [x] All Node tests pass.
+- [x] The Venus program builds with the official current toolchain.
+- [x] Owner deployed it to Rialo DevNet.
+- [x] Vercel reports `ready: true` with the correct public ID.
+- [x] A real transaction verifies in the Proof tab.
+- [x] The newly downloaded report verifies 9/9 locally.
+- [x] The public transaction signature and live demo are documented.

@@ -20,6 +20,16 @@ queries one fixed DevNet RPC, checks the configured program ID, successful
 execution frame, exact hash limbs and score summary, and binds the public
 evidence back into the downloadable report.
 
+The attestor is live on Rialo DevNet at
+`GstS1TAvdytdzYWSauEGouaxmGRYBoiyvjqtHfjWopfp`. A public 100/100 example with
+all fourteen cases protected was confirmed at block `29819199`, downloaded
+with the matched evidence, and independently replayed by the report verifier
+with all nine checks passing. The public transaction signature is:
+
+```text
+xeAqtY8qTwZyrHphEHKLTmGLKGvd68o5fdsA3eXFevZxz9XAnDdWrcBAXs4qYCJSHYQLp9HL1huCJ5Bw9VFAYkf
+```
+
 The same Proof tab can also verify a downloaded report locally with nine
 checks, including its receipt hash, current-policy binding, deterministic
 attack-deck replay, optional live evidence, exact Rialo payload, and an honest
@@ -108,9 +118,10 @@ instead of making a false claim.
 
 ## Anchor on Rialo DevNet
 
-The code path is complete, but the attestor is intentionally **not claimed as
-deployed** until its owner signs a deployment and configures the returned
-program ID. See [`docs/DEVNET.md`](docs/DEVNET.md) for the safe sequence.
+The attestor is deployed and the production verifier reports `ready: true` for
+its public program ID. A fully matched public example is recorded in
+[`docs/DEVNET.md`](docs/DEVNET.md), together with its block, commitments and
+transaction signature.
 
 At a high level:
 
