@@ -8,7 +8,7 @@ proposes safer defaults, optionally compares safe cases with Latch's canonical
 Authorize endpoint, exports a SHA-256 receipt shaped for Rialo, and verifies a
 downloaded report locally against the policy currently in the editor.
 
-Live prototype: https://latchlens.vercel.app/
+Live prototype: https://www.latchlens.xyz/
 
 New users can open **User guide** in the site header for a six-step walkthrough
 from choosing a sample policy to exporting the local proof receipt.
