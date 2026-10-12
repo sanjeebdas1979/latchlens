@@ -372,7 +372,8 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
-        id: "latchlens-attestation",
+        // Rialo's JSON-RPC server deserializes request IDs as u32.
+        id: 1,
         method: "getTransaction",
         params: [{ signature: input.signature }],
       }),

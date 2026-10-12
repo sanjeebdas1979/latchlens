@@ -191,7 +191,7 @@ test("the API verifies a confirmed transaction through the fixed DevNet RPC", as
   process.env.RIALO_ATTESTOR_PROGRAM_ID = programId;
   globalThis.fetch = async (url, options) => {
     captured = { url, options };
-    return Response.json({ jsonrpc: "2.0", id: "test", result: transaction });
+    return Response.json({ jsonrpc: "2.0", id: 1, result: transaction });
   };
 
   try {
@@ -209,6 +209,8 @@ test("the API verifies a confirmed transaction through the fixed DevNet RPC", as
     assert.equal(data.valid, true);
     assert.equal(data.evidence.programId, programId);
     assert.equal(captured.url, RIALO_DEVNET_RPC);
+    assert.equal(rpcBody.id, 1);
+    assert.equal(Number.isInteger(rpcBody.id), true);
     assert.equal(rpcBody.method, "getTransaction");
     assert.deepEqual(rpcBody.params, [{ signature }]);
     assert.equal(captured.options.redirect, "error");
