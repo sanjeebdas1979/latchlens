@@ -1917,7 +1917,7 @@ textarea:focus-visible {
   margin: 0 auto;
   padding: 42px 0 30px;
   border-top: 1px solid var(--line);
-  color: #7f938b;
+  color: #a6bbb3;
   font-size: 12px;
 }
 
@@ -1934,22 +1934,24 @@ textarea:focus-visible {
 
 .footer-intro p {
   margin: 18px 0 0;
-  color: #7f938b;
+  color: #a9bdb5;
   font-size: 13px;
   line-height: 1.7;
 }
 
 .footer-brand {
-  color: #b5c4be;
+  color: #d8e8e2;
+  text-shadow: 0 0 18px rgba(143, 240, 200, 0.12);
 }
 
 .footer-column h2 {
   margin: 2px 0 16px;
-  color: #b8cac3;
+  color: #d1e2db;
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
+  text-shadow: 0 0 16px rgba(143, 240, 200, 0.1);
   text-transform: uppercase;
 }
 
@@ -1962,15 +1964,16 @@ textarea:focus-visible {
 
 .footer-links a {
   position: relative;
-  color: #81958d;
+  color: #a9beb6;
   font-size: 12px;
   line-height: 1.4;
+  text-shadow: 0 0 14px rgba(143, 240, 200, 0.07);
   transition: color 160ms ease, transform 160ms ease;
 }
 
 .footer-links a::after {
   margin-left: 5px;
-  color: #4f6f63;
+  color: #74bca0;
   content: "↗";
   font-size: 10px;
   transition: color 160ms ease;
@@ -2001,7 +2004,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 24px;
   border-top: 1px solid rgba(143, 240, 200, 0.08);
-  color: #687c74;
+  color: #8fa79e;
   font-family: var(--mono);
   font-size: 10px;
   line-height: 1.6;
