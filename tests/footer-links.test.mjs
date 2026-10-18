@@ -18,7 +18,6 @@ const officialLinks = [
   "https://learn.rialo.io/",
   "https://x.com/RialoHQ",
   "https://discord.gg/RialoProtocol",
-  "https://github.com/rialo",
   "https://onlatch.com/",
   "https://onlatch.com/docs",
   "https://onlatch.com/docs/changelog",
@@ -36,6 +35,7 @@ test("the footer exposes the verified Rialo and Latch destinations", () => {
     assert.match(footer, new RegExp(`href="${escapeRegExp(href)}"`));
   }
 
+  assert.doesNotMatch(footer, /href="https:\/\/github\.com\/rialo"/);
   assert.match(footer, /© 2026 LatchLens\. All rights reserved\./);
   assert.match(footer, /Independent builder project\./);
 });
